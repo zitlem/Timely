@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countdown Timer</title>
+<link href="{{ url_for('static', filename='css_timer.css') }}" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body, html {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            background-color: {{ background }};
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .timer-container {
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .timer-display {
+            font-size: min(20vw, 15vh);
+            font-weight: bold;
+            color: {{ font_color }};
+            text-shadow: 0 0 20px currentColor;
+            letter-spacing: 0.1em;
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+            user-select: none;
+            line-height: 1;
+        }
+        
+        .timer-display.warning {
+            color: #ff4444 !important;
+            text-shadow: 0 0 30px #ff4444;
+        }
+        
+        .timer-display.flashing {
+            animation: flash 0.5s infinite alternate;
+        }
+        
+        @keyframes flash {
+            0% {
+                color: #ff0000;
+                text-shadow: 0 0 40px #ff0000;
+            }
+            100% {
+                color: #ffffff;
+                text-shadow: 0 0 40px #ffffff;
+            }
+        }
+        
+        .separator {
+            display: inline-block;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        .separator.blink {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        .connection-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+        
+        .connection-status.show {
+            opacity: 1;
+        }
+        
+        .connection-status.offline {
+            background: rgba(255, 68, 68, 0.9);
+            color: white;
+        }
+        
+        .connection-status.reconnected {
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+        }
+        
+        @media (max-width: 600px) {
+            .timer-display {
+                font-size: min(18vw, 12vh);
+            }
+            
+            .connection-status {
+                top: 10px;
+                right: 10px;
+                font-size: 0.7em;
+                padding: 6px 12px;
+            }
+        }
+        
+        @media (max-height: 400px) {
+            .timer-display {
+                font-size: min(15vw, 20vh);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="timer-container">
+        <div class="timer-display" id="timerDisplay">00:00:00</div>
+        <div class="connection-status" id="connectionStatus">Offline</div>
+    </div>
+
+    <script>
+        const timerDisplay = document.getElementById('timerDisplay');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const showSeconds = {{ show_seconds|tojson }};
+        const hideHourAuto = {{ hide_hour_auto|tojson }};
+        
+        // Timer state for offline operation
+        let timerState = {
+            running: false,
+            paused: false,
+            remaining: 0,
+            finished: false,
+            localStartTime: null,
+            localRemaining: 0,
+            lastServerSync: null
+        };
+        
+        let isOnline = true;
+        let consecutiveErrors = 0;
+        let flashingTimeout = null;
+        let isFlashing = false;
+        let reconnectNotificationTimeout = null;
+        
+        function formatTime(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            
+            let timeString = '';
+            
+            // Determine if we should show hours
+            const shouldShowHours = !hideHourAuto || hours > 0;
+            
+            if (shouldShowHours) {
+                timeString = String(hours).padStart(2, '0') + ':';
+            }
+            
+            timeString += String(minutes).padStart(2, '0');
+            
+            if (showSeconds) {
+                timeString += ':' + String(seconds).padStart(2, '0');
+            }
+            
+            return timeString;
+        }
+        
+        function showConnectionStatus(message, className, duration = 3000) {
+            connectionStatus.textContent = message;
+            connectionStatus.className = `connection-status show ${className}`;
+            
+            setTimeout(() => {
+                connectionStatus.classList.remove('show');
+            }, duration);
+        }
+        
+        function updateLocalTimer() {
+            if (timerState.running && timerState.localStartTime) {
+                const elapsed = (Date.now() - timerState.localStartTime) / 1000;
+                timerState.localRemaining = Math.max(0, timerState.remaining - elapsed);
+                
+                // Check if timer finished locally
+                if (timerState.localRemaining <= 0 && !timerState.finished) {
+                    timerState.finished = true;
+                    timerState.running = false;
+                    startFlashing();
+                }
+            }
+        }
+        
+        function updateDisplay() {
+            updateLocalTimer();
+            
+            let displayTime;
+            if (isOnline) {
+                displayTime = timerState.remaining;
+            } else {
+                displayTime = timerState.localRemaining;
+            }
+            
+            displayTime = Math.max(0, Math.ceil(displayTime));
+            
+            // Force display to 00:00:00 when timer is finished
+            if (timerState.finished || displayTime <= 0) {
+                displayTime = 0;
+            }
+            
+            timerDisplay.textContent = formatTime(displayTime);
+            
+            // Handle color changes and flashing
+            if (timerState.finished || displayTime <= 0) {
+                if (!isFlashing) {
+                    startFlashing();
+                }
+            } else if (displayTime <= 60 && displayTime > 0) {
+                // Warning state - red color but no flashing
+                stopFlashing();
+                timerDisplay.classList.add('warning');
+            } else {
+                // Normal state
+                stopFlashing();
+                timerDisplay.classList.remove('warning');
+            }
+            
+            // Add blinking separators when running (but not when finished)
+            if (timerState.running && !timerState.finished) {
+                const separators = timerDisplay.textContent.match(/:/g);
+                if (separators) {
+                    let displayText = timerDisplay.textContent;
+                    displayText = displayText.replace(/:/g, '<span class="separator blink">:</span>');
+                    timerDisplay.innerHTML = displayText;
+                }
+            }
+        }
+        
+        function syncWithServer(serverData) {
+            const wasOffline = !isOnline;
+            
+            // Update timer state from server
+            const oldRunning = timerState.running;
+            timerState.running = serverData.running;
+            timerState.paused = serverData.paused;
+            timerState.remaining = serverData.remaining;
+            timerState.finished = serverData.finished;
+            timerState.lastServerSync = Date.now();
+            
+            // If timer just started running, set local start time
+            if (serverData.running && !oldRunning) {
+                timerState.localStartTime = Date.now();
+                timerState.localRemaining = serverData.remaining;
+            } else if (serverData.running) {
+                // Resync local timer to server time
+                timerState.localStartTime = Date.now();
+                timerState.localRemaining = serverData.remaining;
+            }
+            
+            if (wasOffline) {
+                isOnline = true;
+                consecutiveErrors = 0;
+                showConnectionStatus('Reconnected', 'reconnected', 2000);
+            }
+        }
+        
+        function updateTimer() {
+            fetch('/api/status', {
+                headers: {
+                    'X-Client-Type': 'timer-display'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    syncWithServer(data);
+                    consecutiveErrors = 0;
+                })
+                .catch(error => {
+                    consecutiveErrors++;
+                    
+                    // Consider offline after 3 consecutive errors
+                    if (consecutiveErrors >= 3 && isOnline) {
+                        isOnline = false;
+                        showConnectionStatus('Offline - Running Locally', 'offline', 80);
+                        //console.warn('Lost connection to server, running timer locally');
+                    }
+                    
+                    //console.error('Error fetching timer status:', error);
+                });
+        }
+        
+        function startFlashing() {
+            if (isFlashing) return;
+            
+            isFlashing = true;
+            timerDisplay.classList.add('flashing');
+            timerDisplay.classList.remove('warning');
+            
+            // Stop flashing after 10 seconds
+            flashingTimeout = setTimeout(() => {
+                stopFlashing();
+            }, 10000);
+        }
+        
+        function stopFlashing() {
+            if (!isFlashing) return;
+            
+            isFlashing = false;
+            timerDisplay.classList.remove('flashing');
+            if (flashingTimeout) {
+                clearTimeout(flashingTimeout);
+                flashingTimeout = null;
+            }
+        }
+        
+        // Update timer every 100ms for smooth display
+        setInterval(() => {
+            updateTimer();
+            updateDisplay();
+        }, 1000); // 1000ms = 1 request/sec
+        
+        // Also update display more frequently for smooth countdown
+        setInterval(updateDisplay, 50);
+        
+        // Handle page visibility changes to resync when tab becomes active
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // Page became visible, force a server sync
+                updateTimer();
+            }
+        });
+        
+        // Handle online/offline events
+        window.addEventListener('online', () => {
+            //console.log('Network connection restored');
+            updateTimer();
+        });
+        
+        window.addEventListener('offline', () => {
+            //console.log('Network connection lost');
+            if (isOnline) {
+                isOnline = false;
+                showConnectionStatus('Network Offline - Running Locally', 'offline', 5000);
+            }
+        });
+        
+        // Initial update
+        updateTimer();
+        
+        // Debug info (remove in production)
+        //console.log('Timer display initialized');
+        //console.log('Show seconds:', showSeconds);
+        //console.log('Hide hour auto:', hideHourAuto);
+    </script>
+</body>
+</html>

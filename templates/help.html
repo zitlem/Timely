@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer Help & Documentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-color: #1f2937;
+            --light-color: #f8fafc;
+            --border-color: #e2e8f0;
+            --code-bg: #f1f5f9;
+            --border-radius: 12px;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            box-shadow: var(--shadow);
+        }
+        
+        h1 {
+            color: var(--dark-color);
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 30px;
+            overflow-x: auto;
+        }
+        
+        .nav-tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .nav-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        h2 {
+            color: var(--dark-color);
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 30px 0 15px 0;
+        }
+        
+        h3 {
+            color: var(--dark-color);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 25px 0 10px 0;
+        }
+        
+        h4 {
+            color: var(--dark-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 20px 0 10px 0;
+        }
+        
+        p {
+            color: #4b5563;
+            margin-bottom: 15px;
+        }
+        
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+        
+        .inline-code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .parameter-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .parameter-table th,
+        .parameter-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .parameter-table th {
+            background: var(--code-bg);
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .parameter-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .url-builder {
+            background: var(--light-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 8px;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+        
+        .color-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .color-input-group input[type="color"] {
+            width: 60px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .generated-url {
+            background: white;
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            position: relative;
+        }
+        
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.3s ease;
+        }
+        
+        .copy-button:hover {
+            background: var(--secondary-color);
+        }
+        
+        .preview-button {
+            background: var(--success-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .preview-button:hover {
+            background: #059669;
+        }
+        
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .quick-link {
+            display: block;
+            padding: 15px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--dark-color);
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .quick-link:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        ul {
+            color: #4b5563;
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 5px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid;
+        }
+        
+        .alert-info {
+            background: #eff6ff;
+            border-color: var(--primary-color);
+            color: #1e40af;
+        }
+        
+        .alert-warning {
+            background: #fffbeb;
+            border-color: var(--warning-color);
+            color: #92400e;
+        }
+        
+        .endpoint-section {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .endpoint-title {
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .method-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: 10px;
+        }
+        
+        .method-get {
+            background: #10b981;
+            color: white;
+        }
+        
+        .method-post {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-tabs {
+                flex-wrap: wrap;
+            }
+            
+            .nav-tab {
+                flex: 1;
+                min-width: 120px;
+            }
+            
+            .color-input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Timer Documentation</h1>
+        <p class="subtitle">Complete guide to using the countdown timer with customization options</p>
+        
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('overview')">Overview</button>
+            <button class="nav-tab" onclick="showTab('customization')">Customization</button>
+            <button class="nav-tab" onclick="showTab('builder')">URL Builder</button>
+            <button class="nav-tab" onclick="showTab('api')">API Reference</button>
+            <button class="nav-tab" onclick="showTab('setup')">Setup Guide</button>
+        </div>
+        
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="section">
+                <h2>Quick Start</h2>
+                <p>The timer application consists of two main interfaces:</p>
+                
+                <div class="quick-links">
+                    <a href="/" class="quick-link" target="_blank">
+                        Timer Display<br>
+                        <small>Full-screen countdown view</small>
+                    </a>
+                    <a href="/control" class="quick-link" target="_blank">
+                        Control Panel<br>
+                        <small>Start, pause, and reset timer</small>
+                    </a>
+                </div>
+                
+                <h3>Features</h3>
+                <ul>
+                    <li><strong>Full-screen display</strong> - Perfect for presentations and public viewing</li>
+                    <li><strong>Responsive design</strong> - Works on all screen sizes from mobile to large displays</li>
+                    <li><strong>Offline resilience</strong> - Continues running even if connection is lost</li>
+                    <li><strong>Visual alerts</strong> - Warning colors and flashing when time expires</li>
+                    <li><strong>Access control</strong> - IP whitelisting for timer controls</li>
+                    <li><strong>Customizable appearance</strong> - Colors, fonts, and display options</li>
+                </ul>
+                
+                <div class="alert alert-info">
+                    <strong>Tip:</strong> Anyone can view the timer display, but only whitelisted IPs can control it (start/pause/reset).
+                </div>
+            </div>
+        </div>
+        
+        <!-- Customization Tab -->
+        <div id="customization" class="tab-content">
+            <div class="section">
+                <h2>Display Customization</h2>
+                <p>Customize the timer appearance using URL parameters:</p>
+                
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                            <th>Default</th>
+                            <th>Example Values</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>background</code></td>
+                            <td>Background color (hex)</td>
+                            <td>#000000</td>
+                            <td>#000000, #1a1a1a, #2d3748</td>
+                        </tr>
+                        <tr>
+                            <td><code>font-color</code></td>
+                            <td>Text color (hex)</td>
+                            <td>#00ff00</td>
+                            <td>#ffffff, #00ff00, #ff6b6b</td>
+                        </tr>
+                        <tr>
+                            <td><code>show-seconds</code></td>
+                            <td>Display seconds</td>
+                            <td>true</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
+                            <td><code>hide-hour-auto</code></td>
+                            <td>Auto-hide hours when zero</td>
+                            <td>off</td>
+                            <td>on, off</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Example URLs</h3>
+                <div class="code-block"><!-- Basic timer -->
+/?background=%23000000&font-color=%23ffffff
+
+<!-- Red on black, no seconds -->
+/?background=%23000000&font-color=%23ff0000&show-seconds=false
+
+<!-- Blue theme with auto-hide hours -->
+/?background=%232d3748&font-color=%2363b3ed&hide-hour-auto=on</div>
+                
+                <div class="alert alert-warning">
+                    <strong>Note:</strong> URL encode color values (# becomes %23). The URL builder below handles this automatically.
+                </div>
+            </div>
+        </div>
+        
+        <!-- URL Builder Tab -->
+        <div id="builder" class="tab-content">
+            <div class="section">
+                <h2>Timer URL Builder</h2>
+                <p>Use this tool to generate custom timer URLs with your preferred settings:</p>
+                
+                <div class="url-builder">
+                    <div class="form-group">
+                        <label>Background Color</label>
+                        <div class="color-input-group">
+                            <input type="color" id="bgColor" value="#000000">
+                            <input type="text" id="bgColorText" value="#000000" placeholder="#000000">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Font Color</label>
+                        <div class="color-input-group">
+                            <input type="color" id="fontColor" value="#00ff00">
+                            <input type="text" id="fontColorText" value="#00ff00" placeholder="#00ff00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Display Options</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="showSeconds" checked>
+                            <label for="showSeconds">Show seconds</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="hideHourAuto">
+                            <label for="hideHourAuto">Auto-hide hours when zero</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Generated URL</label>
+                        <div class="generated-url">
+                            <span id="generatedUrl">/?background=%23000000&font-color=%2300ff00&show-seconds=true&hide-hour-auto=off</span>
+                            <button class="copy-button" onclick="copyUrl()">Copy</button>
+                        </div>
+                        <button class="preview-button" onclick="previewTimer()">Preview Timer</button>
+                    </div>
+                </div>
+                
+                <h3>Preset Themes</h3>
+                <div class="quick-links">
+                    <a href="#" class="quick-link" onclick="applyPreset('classic')">
+                        Classic Green<br>
+                        <small>Black bg, green text</small>
+                    </a>
+                    <a href="#" class="quick-link" onclick="applyPreset('matrix')">
+                        Matrix Style<br>
+                        <small>Dark green bg, bright green text</small>
+                    </a>
+                    <a href="#" class="quick-link" onclick="applyPreset('modern')">
+                        Modern Blue<br>
+                        <small>Dark bg, blue text</small>
+                    </a>
+                    <a href="#" class="quick-link" onclick="applyPreset('minimal')">
+                        Minimal White<br>
+                        <small>White bg, dark text</small>
+                    </a>
+                    <a href="#" class="quick-link" onclick="applyPreset('red')">
+                        Warning Red<br>
+                        <small>Black bg, red text</small>
+                    </a>
+                    <a href="#" class="quick-link" onclick="applyPreset('purple')">
+                        Purple Glow<br>
+                        <small>Dark bg, purple text</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- API Reference Tab -->
+        <div id="api" class="tab-content">
+            <div class="section">
+                <h2>API Endpoints</h2>
+                
+                <div class="endpoint-section">
+                    <div class="endpoint-title">
+                        <span class="method-badge method-get">GET</span>
+                        /api/status
+                    </div>
+                    <p>Get current timer status (public access - no authentication required)</p>
+                    
+                    <h4>Example Request:</h4>
+                    <div class="code-block">curl -X GET http://your-server/api/status</div>
+                    
+                    <h4>Example Response:</h4>
+                    <div class="code-block">{
+  "running": true,
+  "paused": false,
+  "remaining": 300.5,
+  "finished": false,
+  "total": 600,
+  "connected_clients": 3
+}</div>
+                    
+                    <h4>Response Fields:</h4>
+                    <ul>
+                        <li><strong>running:</strong> Whether the timer is currently running</li>
+                        <li><strong>paused:</strong> Whether the timer is paused</li>
+                        <li><strong>remaining:</strong> Seconds remaining (decimal precision)</li>
+                        <li><strong>finished:</strong> Whether the timer has reached zero</li>
+                        <li><strong>total:</strong> Total timer duration in seconds</li>
+                        <li><strong>connected_clients:</strong> Number of active display clients</li>
+                    </ul>
+                </div>
+                
+                <div class="endpoint-section">
+                    <div class="endpoint-title">
+                        <span class="method-badge method-post">POST</span>
+                        /api/start
+                    </div>
+                    <p>Start timer with specified duration (requires IP whitelist access)</p>
+                    
+                    <h4>Example Request:</h4>
+                    <div class="code-block">curl -X POST http://your-server/api/start \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hours": 0,
+    "minutes": 5,
+    "seconds": 30
+  }'</div>
+                    
+                    <h4>Request Body Fields:</h4>
+                    <ul>
+                        <li><strong>hours:</strong> Hours (0-23)</li>
+                        <li><strong>minutes:</strong> Minutes (0-59)</li>
+                        <li><strong>seconds:</strong> Seconds (0-59)</li>
+                    </ul>
+                    
+                    <h4>Success Response:</h4>
+                    <div class="code-block">{"success": true}</div>
+                    
+                    <h4>Error Response (403 Forbidden):</h4>
+                    <div class="code-block">{"error": "Access denied"}</div>
+                </div>
+                
+                <div class="endpoint-section">
+                    <div class="endpoint-title">
+                        <span class="method-badge method-post">POST</span>
+                        /api/pause
+                    </div>
+                    <p>Pause or resume the timer (requires IP whitelist access)</p>
+                    
+                    <h4>Example Request:</h4>
+                    <div class="code-block">curl -X POST http://your-server/api/pause</div>
+                    
+                    <h4>Success Response:</h4>
+                    <div class="code-block">{"success": true}</div>
+                </div>
+                
+                <div class="endpoint-section">
+                    <div class="endpoint-title">
+                        <span class="method-badge method-post">POST</span>
+                        /api/reset
+                    </div>
+                    <p>Reset timer to zero (requires IP whitelist access)</p>
+                    
+                    <h4>Example Request:</h4>
+                    <div class="code-block">curl -X POST http://your-server/api/reset</div>
+                    
+                    <h4>Success Response:</h4>
+                    <div class="code-block">{"success": true}</div>
+                </div>
+                
+                <div class="endpoint-section">
+                    <div class="endpoint-title">
+                        <span class="method-badge method-get">GET</span>
+                        /api/whitelist
+                    </div>
+                    <p>Check whitelist status and view configuration (requires IP whitelist access)</p>
+                    
+                    <h4>Example Request:</h4>
+                    <div class="code-block">curl -X GET http://your-server/api/whitelist</div>
+                    
+                    <h4>Example Response:</h4>
+                    <div class="code-block">{
+  "whitelist": [
+    "127.0.0.1",
+    "192.168.1.0/24",
+    "10.0.0.100"
+  ],
+  "your_ip": "192.168.1.100",
+  "access": "granted"
+}</div>
+                </div>
+                
+                <div class="endpoint-section">
+                    <div class="endpoint-title">
+                        <span class="method-badge method-get">GET</span>
+                        /api/clients
+                    </div>
+                    <p>Get detailed information about connected clients (requires IP whitelist access)</p>
+                    
+                    <h4>Example Request:</h4>
+                    <div class="code-block">curl -X GET http://your-server/api/clients</div>
+                    
+                    <h4>Example Response:</h4>
+                    <div class="code-block">{
+  "connected_count": 2,
+  "clients": [
+    {
+      "ip": "192.168.1.100",
+      "last_seen": "14:30:25",
+      "seconds_ago": 2
+    },
+    {
+      "ip": "192.168.1.101", 
+      "last_seen": "14:30:20",
+      "seconds_ago": 7
+    }
+  ]
+}</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Setup Guide Tab -->
+        <div id="setup" class="tab-content">
+            <div class="section">
+                <h2>Setup & Configuration</h2>
+                
+                <h3>IP Whitelist Configuration</h3>
+                <p>Control access is restricted to whitelisted IPs. Configure using either method:</p>
+                
+                <h4>Method 1: Code Configuration</h4>
+                <p>Edit the <code>CONTROL_WHITELIST</code> array in <code>timer.py</code>:</p>
+                <div class="code-block">CONTROL_WHITELIST = [
+    '127.0.0.1',       # localhost
+    '::1',             # localhost IPv6
+    '192.168.1.0/24',  # home network
+    '10.0.0.100',      # specific office IP
+]</div>
+                
+                <h4>Method 2: JSON File</h4>
+                <p>Create <code>control_whitelist.json</code> in the same directory:</p>
+                <div class="code-block">[
+    "127.0.0.1",
+    "192.168.1.0/24",
+    "10.0.0.0/16"
+]</div>
+                
+                <h3>Supported IP Formats</h3>
+                <ul>
+                    <li><strong>Single IPv4:</strong> <code>192.168.1.100</code></li>
+                    <li><strong>IPv4 Subnet:</strong> <code>192.168.1.0/24</code> (256 addresses)</li>
+                    <li><strong>Large Subnet:</strong> <code>10.0.0.0/16</code> (65,536 addresses)</li>
+                    <li><strong>IPv6:</strong> <code>::1</code> or <code>2001:db8::/32</code></li>
+                </ul>
+                
+                <h3>Installation & Running</h3>
+                <div class="code-block"># Install Python dependencies
+pip install flask
+
+# Run the server
+python timer.py
+
+# Server will start on http://0.0.0.0:80
+# Access timer display: http://your-server/
+# Access control panel: http://your-server/control</div>
+                
+                <h3>File Structure</h3>
+                <div class="code-block">timer/
+├── timer.py              # Main server file
+├── control_whitelist.json # IP whitelist (optional)
+└── templates/
+    ├── timer.html         # Timer display template
+    ├── control.html       # Control panel template
+    └── help.html          # This help page template</div>
+                
+                <h3>Production Deployment</h3>
+                <p>For production use, consider:</p>
+                <ul>
+                    <li>Use a WSGI server like Gunicorn instead of Flask's development server</li>
+                    <li>Put the application behind a reverse proxy like Nginx</li>
+                    <li>Enable HTTPS for secure connections</li>
+                    <li>Configure proper firewall rules</li>
+                    <li>Set up process monitoring and automatic restart</li>
+                </ul>
+                
+                <h4>Example Gunicorn Command:</h4>
+                <div class="code-block">pip install gunicorn
+gunicorn -w 4 -b 0.0.0.0:8000 timer:app</div>
+                
+                <div class="alert alert-info">
+                    <strong>Security Note:</strong> The timer display (/) is publicly accessible, but control functions (/control, /api/start, /api/pause, /api/reset) require whitelisted IP addresses.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+        
+        function updateUrl() {
+            const bgColor = encodeURIComponent(document.getElementById('bgColorText').value || '#000000');
+            const fontColor = encodeURIComponent(document.getElementById('fontColorText').value || '#00ff00');
+            const showSeconds = document.getElementById('showSeconds').checked ? 'true' : 'false';
+            const hideHourAuto = document.getElementById('hideHourAuto').checked ? 'on' : 'off';
+            
+            const url = `/?background=${bgColor}&font-color=${fontColor}&show-seconds=${showSeconds}&hide-hour-auto=${hideHourAuto}`;
+            document.getElementById('generatedUrl').textContent = url;
+        }
+        
+        function copyUrl() {
+            const urlText = document.getElementById('generatedUrl').textContent;
+            const fullUrl = window.location.origin + urlText;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(fullUrl).then(() => {
+                    showCopied();
+                }).catch(err => {
+                    console.error('Clipboard error:', err);
+                });
+            } else {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = fullUrl;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showCopied();
+            }
+        }
+
+        function showCopied() {
+            const button = document.querySelector('.copy-button');
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(() => button.textContent = originalText, 2000);
+        }
+        
+        function previewTimer() {
+            const url = document.getElementById('generatedUrl').textContent;
+            window.open(url, '_blank');
+        }
+        
+        function applyPreset(preset) {
+            const presets = {
+                classic: { bg: '#000000', font: '#00ff00', seconds: true, hideHour: false },
+                matrix: { bg: '#001100', font: '#00ff41', seconds: true, hideHour: false },
+                modern: { bg: '#2d3748', font: '#63b3ed', seconds: true, hideHour: true },
+                minimal: { bg: '#ffffff', font: '#2d3748', seconds: false, hideHour: true },
+                red: { bg: '#000000', font: '#ff4444', seconds: true, hideHour: false },
+                purple: { bg: '#1a1625', font: '#9f7aea', seconds: true, hideHour: false }
+            };
+            
+            const p = presets[preset];
+            document.getElementById('bgColor').value = p.bg;
+            document.getElementById('bgColorText').value = p.bg;
+            document.getElementById('fontColor').value = p.font;
+            document.getElementById('fontColorText').value = p.font;
+            document.getElementById('showSeconds').checked = p.seconds;
+            document.getElementById('hideHourAuto').checked = p.hideHour;
+            
+            updateUrl();
+        }
+        
+        // Event listeners for URL builder
+        document.getElementById('bgColor').addEventListener('input', (e) => {
+            document.getElementById('bgColorText').value = e.target.value;
+            updateUrl();
+        });
+        
+        document.getElementById('bgColorText').addEventListener('input', (e) => {
+            if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('bgColor').value = e.target.value;
+            }
+            updateUrl();
+        });
+        
+        document.getElementById('fontColor').addEventListener('input', (e) => {
+            document.getElementById('fontColorText').value = e.target.value;
+            updateUrl();
+        });
+        
+        document.getElementById('fontColorText').addEventListener('input', (e) => {
+            if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('fontColor').value = e.target.value;
+            }
+            updateUrl();
+        });
+        
+        document.getElementById('showSeconds').addEventListener('change', updateUrl);
+        document.getElementById('hideHourAuto').addEventListener('change', updateUrl);
+        
+        // Initialize URL on page load
+        updateUrl();
+    </script>
+</body>
+</html>

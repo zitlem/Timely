@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer Control</title>
+    <link href="{{ url_for('static', filename='css_control.css') }}" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-color: #1f2937;
+            --light-color: #f8fafc;
+            --border-radius: 16px;
+            --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        
+        .control-container {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            padding: clamp(10px, 5vw, 20px);
+            box-shadow: var(--shadow-lg);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .control-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+        
+        .title {
+            text-align: center;
+            color: var(--dark-color);
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            margin-bottom: clamp(20px, 5vw, 30px);
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+        
+        .clients-display {
+            background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+            border-radius: 12px;
+            padding: clamp(8px, 3vw, 10px);
+            margin-bottom: clamp(8px, 4vw, 10px);
+            text-align: center;
+            border: 1px solid #81d4fa;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .clients-display::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 3s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .clients-count {
+            font-size: clamp(1.2rem, 4vw, 1.5rem);
+            font-weight: 700;
+            color: #0277bd;
+            margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .clients-label {
+            color: #0288d1;
+            font-size: clamp(0.75rem, 2.5vw, 0.85rem);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .status-display {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: clamp(8x, 4vw, 10px);
+            margin-bottom: clamp(8px, 4vw, 10px);
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .status-display::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        .status-time {
+            font-family: 'Inter', monospace;
+            font-size: clamp(1.8rem, 6vw, 2.5rem);
+            font-weight: 700;
+            color: var(--dark-color);
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .status-info {
+            color: #64748b;
+            font-size: clamp(0.9rem, 3vw, 1.1rem);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .status-info.running {
+            color: var(--success-color);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-info.paused {
+            color: var(--warning-color);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .presets-section {
+            margin-bottom: clamp(20px, 5vw, 24px);
+        }
+        
+        .presets-label {
+            display: block;
+            margin-bottom: 16px;
+            color: var(--dark-color);
+            font-weight: 600;
+            font-size: clamp(0.9rem, 3vw, 1rem);
+            text-align: center;
+        }
+        
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: clamp(6px, 2vw, 10px);
+            margin-bottom: clamp(8px, 4vw, 10px);
+        }
+        
+        .preset-btn {
+            padding: clamp(8px, 2vw, 12px) clamp(6px, 1.5vw, 10px);
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: #ffffff;
+            color: var(--dark-color);
+            font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        .preset-btn:hover {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .preset-btn:active {
+            transform: translateY(0);
+        }
+        
+        .input-section {
+            margin-bottom: clamp(20px, 5vw, 30px);
+        }
+        
+        .input-label {
+            display: block;
+            margin-bottom: 16px;
+            color: var(--dark-color);
+            font-weight: 600;
+            font-size: clamp(0.9rem, 3vw, 1rem);
+            text-align: center;
+        }
+        
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: clamp(10px, 3vw, 16px);
+            margin-bottom: clamp(8px, 5vw, 10px);
+        }
+        
+        .input-field {
+            position: relative;
+        }
+        
+        .input-field label {
+            display: block;
+            margin-bottom: 8px;
+            color: #64748b;
+            font-weight: 500;
+            font-size: clamp(0.75rem, 2.5vw, 0.85rem);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: center;
+        }
+        
+        .input-field input {
+            width: 100%;
+            padding: clamp(12px, 3vw, 16px);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: clamp(1rem, 3.5vw, 1.2rem);
+            text-align: center;
+            background: #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', monospace;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .input-field input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .input-field input:hover:not(:focus) {
+            border-color: #cbd5e1;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: clamp(10px, 3vw, 16px);
+            margin-bottom: clamp(8px, 4vw, 10px);
+        }
+        
+        .btn {
+            padding: clamp(12px, 3vw, 16px) clamp(16px, 4vw, 24px);
+            border: none;
+            border-radius: 12px;
+            font-size: clamp(0.85rem, 3vw, 1rem);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            position: relative;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-start {
+            background: linear-gradient(135deg, var(--success-color), #059669);
+            color: white;
+        }
+        
+        .btn-pause {
+            background: linear-gradient(135deg, var(--warning-color), #d97706);
+            color: white;
+        }
+        
+        .btn-reset {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626);
+            color: white;
+        }
+        
+        .timer-link {
+            text-align: center;
+            margin-top: clamp(16px, 4vw, 24px);
+        }
+        
+        .timer-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: clamp(0.85rem, 3vw, 0.95rem);
+        }
+        
+        .timer-link a:hover {
+            color: var(--secondary-color);
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .timer-link svg {
+            width: clamp(14px, 3vw, 16px);
+            height: clamp(14px, 3vw, 16px);
+        }
+        
+		
+
+		
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateX(100px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: clamp(0.85rem, 3vw, 0.95rem);
+            max-width: calc(100vw - 40px);
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: linear-gradient(135deg, var(--success-color), #059669);
+        }
+        
+        .notification.error {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626);
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 600px) {
+            body {
+                padding: 16px;
+            }
+            
+            .control-container {
+                padding: 20px 16px;
+                margin: 0;
+            }
+            
+            .presets-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .preset-btn {
+                padding: 10px 8px;
+                font-size: 0.7rem;
+            }
+            
+            .input-group {
+                gap: 8px;
+            }
+            
+            .input-field input {
+                padding: 12px 8px;
+            }
+            
+            .button-group {
+                gap: 8px;
+            }
+            
+            .btn {
+                padding: 14px 12px;
+                font-size: 0.8rem;
+            }
+            
+            .notification {
+                top: 16px;
+                right: 16px;
+                left: 16px;
+                transform: translateY(-100px);
+                max-width: none;
+            }
+            
+            .notification.show {
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .presets-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
+            }
+            
+            .preset-btn {
+                padding: 8px 6px;
+                font-size: 0.65rem;
+            }
+            
+            .input-group {
+                gap: 6px;
+            }
+            
+            .input-field input {
+                padding: 10px 6px;
+                font-size: 1rem;
+            }
+            
+            .btn {
+                padding: 12px 8px;
+                font-size: 0.75rem;
+            }
+            
+            .button-group {
+                gap: 6px;
+            }
+        }
+        
+        @media (max-height: 700px) {
+            .control-container {
+                padding: 16px;
+            }
+            
+            .title {
+                margin-bottom: 16px;
+            }
+            
+            .clients-display, .status-display {
+                margin-bottom: 16px;
+                padding: 16px;
+            }
+            
+            .presets-section {
+                margin-bottom: 16px;
+            }
+            
+            .input-group {
+                margin-bottom: 16px;
+            }
+        }
+        
+        /* Landscape phone optimization */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body {
+                padding: 8px;
+            }
+            
+            .control-container {
+                max-width: 600px;
+                padding: 12px 16px;
+            }
+            
+            .title {
+                font-size: 1.3rem;
+                margin-bottom: 12px;
+            }
+            
+            .clients-display, .status-display {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+            
+            .status-time {
+                font-size: 1.8rem;
+            }
+            
+            .presets-section {
+                margin-bottom: 12px;
+            }
+            
+            .presets-grid {
+                gap: 4px;
+            }
+            
+            .preset-btn {
+                padding: 6px 4px;
+                font-size: 0.6rem;
+            }
+            
+            .input-group {
+                margin-bottom: 12px;
+            }
+            
+            .button-group {
+                margin-bottom: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="control-container">
+        <h1 class="title">Timer Control</h1>
+        
+        <div class="clients-display">
+            <div class="clients-count" id="clientsCount">0</div>
+            <div class="clients-label">Connected Displays</div>
+        </div>
+        
+        <div class="status-display">
+            <div class="status-time" id="statusTime">00:00:00</div>
+            <div class="status-info" id="statusInfo">Ready</div>
+        </div>
+        
+        <div class="presets-section">
+            <label class="presets-label">Quick Presets</label>
+            <div class="presets-grid">
+                <button class="preset-btn" onclick="setPreset(0, 1, 0)">1m</button>
+                <button class="preset-btn" onclick="setPreset(0, 5, 0)">5m</button>
+                <button class="preset-btn" onclick="setPreset(0, 10, 0)">10m</button>
+                <button class="preset-btn" onclick="setPreset(0, 15, 0)">15m</button>
+                <button class="preset-btn" onclick="setPreset(0, 20, 0)">20m</button>
+                <button class="preset-btn" onclick="setPreset(0, 30, 0)">30m</button>
+                <button class="preset-btn" onclick="setPreset(0, 45, 0)">45m</button>
+                <button class="preset-btn" onclick="setPreset(1, 0, 0)">1h</button>
+            </div>
+        </div>
+        
+        <div class="input-section">
+            <label class="input-label">Custom Timer Duration</label>
+            <div class="input-group">
+                <div class="input-field">
+                    <label for="hours">Hours</label>
+                    <input type="number" id="hours" min="0" max="23" value="0">
+                </div>
+                <div class="input-field">
+                    <label for="minutes">Minutes</label>
+                    <input type="number" id="minutes" min="0" max="59" value="5">
+                </div>
+                <div class="input-field">
+                    <label for="seconds">Seconds</label>
+                    <input type="number" id="seconds" min="0" max="59" value="0">
+                </div>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn btn-start" onclick="startTimer()">Start</button>
+            <button class="btn btn-pause" onclick="pauseTimer()">Pause</button>
+            <button class="btn btn-reset" onclick="resetTimer()">Reset</button>
+        </div>
+        
+        <div class="timer-link">
+            <a href="/" target="_blank">
+                <svg fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                </svg>
+                Open Timer Display
+            </a>
+     
+	 
+            <a href="/help" target="_blank">
+                <svg fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                </svg>
+                Open Help
+            </a>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        const statusTime = document.getElementById('statusTime');
+        const statusInfo = document.getElementById('statusInfo');
+        const clientsCount = document.getElementById('clientsCount');
+        const notification = document.getElementById('notification');
+        
+        function formatTime(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            
+            return String(hours).padStart(2, '0') + ':' + 
+                   String(minutes).padStart(2, '0') + ':' + 
+                   String(seconds).padStart(2, '0');
+        }
+        
+        function showNotification(message, type = 'success') {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        function setPreset(hours, minutes, seconds) {
+            document.getElementById('hours').value = hours;
+            document.getElementById('minutes').value = minutes;
+            document.getElementById('seconds').value = seconds;
+            
+            // Visual feedback
+            const presetText = hours > 0 ? `${hours}h` : `${minutes}m`;
+            showNotification(`Set to ${presetText}`, 'success');
+        }
+        
+        function updateStatus() {
+            fetch('/api/status', {
+                headers: {
+                    'X-Client-Type': 'control-panel'
+                }
+            })
+                .then(response => {
+                    if (response.status === 403) {
+                        // IP not whitelisted
+                        statusInfo.textContent = 'Access Denied - IP Not Whitelisted';
+                        statusTime.textContent = '--:--:--';
+                        clientsCount.textContent = '--';
+                        showNotification('Access denied: Your IP is not whitelisted for control access', 'error');
+                        return;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data) return; // Handle 403 case
+                    
+                    const remaining = Math.ceil(data.remaining);
+                    statusTime.textContent = formatTime(remaining);
+                    
+                    // Update connected clients count
+                    clientsCount.textContent = data.connected_clients || 0;
+                    
+                    statusInfo.className = 'status-info';
+                    
+                    if (data.running) {
+                        statusInfo.textContent = 'Running';
+                        statusInfo.classList.add('running');
+                    } else if (data.paused) {
+                        statusInfo.textContent = 'Paused';
+                        statusInfo.classList.add('paused');
+                    } else {
+                        statusInfo.textContent = 'Ready';
+                    }
+                })
+                .catch(error => {
+                    //console.error('Error fetching status:', error);
+                    statusInfo.textContent = 'Connection Error';
+                    clientsCount.textContent = '--';
+                });
+        }
+        
+        function startTimer() {
+            const hours = parseInt(document.getElementById('hours').value) || 0;
+            const minutes = parseInt(document.getElementById('minutes').value) || 0;
+            const seconds = parseInt(document.getElementById('seconds').value) || 0;
+            
+            if (hours === 0 && minutes === 0 && seconds === 0) {
+                showNotification('Please set a time greater than 0', 'error');
+                return;
+            }
+            
+            fetch('/api/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    hours: hours,
+                    minutes: minutes,
+                    seconds: seconds
+                })
+            })
+            .then(response => {
+                if (response.status === 403) {
+                    throw new Error('Access denied: IP not whitelisted');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const totalTime = hours * 3600 + minutes * 60 + seconds;
+                    const timeText = formatTime(totalTime);
+                    showNotification(`Timer started: ${timeText}`);
+                }
+            })
+            .catch(error => {
+                //console.error('Error starting timer:', error);
+                if (error.message.includes('Access denied')) {
+                    showNotification('Access denied: Your IP is not whitelisted', 'error');
+                } else {
+                    showNotification('Error starting timer', 'error');
+                }
+            });
+        }
+        
+        function pauseTimer() {
+            fetch('/api/pause', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.status === 403) {
+                    throw new Error('Access denied: IP not whitelisted');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showNotification('Timer paused');
+                }
+            })
+            .catch(error => {
+                //console.error('Error pausing timer:', error);
+                if (error.message.includes('Access denied')) {
+                    showNotification('Access denied: Your IP is not whitelisted', 'error');
+                } else {
+                    showNotification('Error pausing timer', 'error');
+                }
+            });
+        }
+        
+        function resetTimer() {
+            fetch('/api/reset', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.status === 403) {
+                    throw new Error('Access denied: IP not whitelisted');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showNotification('Timer reset');
+                }
+            })
+            .catch(error => {
+                //console.error('Error resetting timer:', error);
+                if (error.message.includes('Access denied')) {
+                    showNotification('Access denied: Your IP is not whitelisted', 'error');
+                } else {
+                    showNotification('Error resetting timer', 'error');
+                }
+            });
+        }
+        
+        // Update status every second for smooth display
+        setInterval(updateStatus, 1000);
+        
+        // Initial status update
+        updateStatus();
+        
+        // Allow Enter key to start timer
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                startTimer();
+            }
+        });
+        
+        // Add click handlers to preset buttons for visual feedback
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Add a quick visual feedback
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 150);
+            });
+        });
+    </script>
+</body>
+</html>
