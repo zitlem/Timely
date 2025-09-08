@@ -4,8 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timer Help & Documentation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 300;
+            font-display: swap;
+            src: url('/static/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2JL7SUc.woff2') format('woff2');
+        }
+        
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('/static/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa0ZL7SUc.woff2') format('woff2');
+        }
+        
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 500;
+            font-display: swap;
+            src: url('/static/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2pL7SUc.woff2') format('woff2');
+        }
+        
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 600;
+            font-display: swap;
+            src: url('/static/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7SUc.woff2') format('woff2');
+        }
+        
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 700;
+            font-display: swap;
+            src: url('/static/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2') format('woff2');
+        }
         * {
             margin: 0;
             padding: 0;
@@ -127,6 +165,8 @@
             font-size: 0.9rem;
             margin: 15px 0;
             overflow-x: auto;
+            position: relative;
+            white-space: pre-wrap;
         }
         
         .inline-code {
@@ -252,6 +292,33 @@
         
         .copy-button:hover {
             background: var(--secondary-color);
+        }
+        
+        .copy-api-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.3s ease;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .copy-api-button:hover {
+            background: var(--secondary-color);
+        }
+        
+        .api-example {
+            display: block;
+            white-space: nowrap;
+            padding-right: 60px;
+            overflow-x: auto;
         }
         
         .preview-button {
@@ -429,6 +496,7 @@
                     <li><strong>Visual alerts</strong> - Warning colors and flashing when time expires</li>
                     <li><strong>Access control</strong> - IP whitelisting for timer controls</li>
                     <li><strong>Customizable appearance</strong> - Colors, fonts, and display options</li>
+                    <li><strong>Flexible positioning</strong> - Place timer in any corner or center of screen</li>
                 </ul>
                 
                 <div class="alert alert-info">
@@ -466,6 +534,12 @@
                             <td>#ffffff, #00ff00, #ff6b6b</td>
                         </tr>
                         <tr>
+                            <td><code>warning-color</code></td>
+                            <td>Warning color for last minute (hex)</td>
+                            <td>#ff4444</td>
+                            <td>#ff0000, #ff8800, #ffaa00</td>
+                        </tr>
+                        <tr>
                             <td><code>show-seconds</code></td>
                             <td>Display seconds</td>
                             <td>true</td>
@@ -476,6 +550,12 @@
                             <td>Auto-hide hours when zero</td>
                             <td>off</td>
                             <td>on, off</td>
+                        </tr>
+                        <tr>
+                            <td><code>position</code></td>
+                            <td>Timer display position</td>
+                            <td>center</td>
+                            <td>center, top-left, top-right, bottom-left, bottom-right</td>
                         </tr>
                     </tbody>
                 </table>
@@ -488,7 +568,16 @@
 /?background=%23000000&font-color=%23ff0000&show-seconds=false
 
 <!-- Blue theme with auto-hide hours -->
-/?background=%232d3748&font-color=%2363b3ed&hide-hour-auto=on</div>
+/?background=%232d3748&font-color=%2363b3ed&hide-hour-auto=on
+
+<!-- Timer positioned in top-left corner -->
+/?position=top-left&background=%23000000&font-color=%2300ff00
+
+<!-- Timer in bottom-right with red text -->
+/?position=bottom-right&font-color=%23ff0000&show-seconds=false
+
+<!-- Custom warning color (orange) -->
+/?warning-color=%23ff8800&background=%23000000&font-color=%2300ff00</div>
                 
                 <div class="alert alert-warning">
                     <strong>Note:</strong> URL encode color values (# becomes %23). The URL builder below handles this automatically.
@@ -520,6 +609,25 @@
                     </div>
                     
                     <div class="form-group">
+                        <label>Warning Color (Last Minute)</label>
+                        <div class="color-input-group">
+                            <input type="color" id="warningColor" value="#ff4444">
+                            <input type="text" id="warningColorText" value="#ff4444" placeholder="#ff4444">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Timer Position</label>
+                        <select id="position">
+                            <option value="center">Center</option>
+                            <option value="top-left">Top Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
                         <label>Display Options</label>
                         <div class="checkbox-group">
                             <input type="checkbox" id="showSeconds" checked>
@@ -534,7 +642,7 @@
                     <div class="form-group">
                         <label>Generated URL</label>
                         <div class="generated-url">
-                            <span id="generatedUrl">/?background=%23000000&font-color=%2300ff00&show-seconds=true&hide-hour-auto=off</span>
+                            <span id="generatedUrl">/?background=%23000000&font-color=%2300ff00&warning-color=%23ff4444&show-seconds=true&hide-hour-auto=off&position=center</span>
                             <button class="copy-button" onclick="copyUrl()">Copy</button>
                         </div>
                         <button class="preview-button" onclick="previewTimer()">Preview Timer</button>
@@ -584,7 +692,7 @@
                     <p>Get current timer status (public access - no authentication required)</p>
                     
                     <h4>Example Request:</h4>
-                    <div class="code-block">curl -X GET http://your-server/api/status</div>
+                    <div class="code-block"><span class="api-example">curl -X GET http://<span id="hostname1"></span>/api/status</span><button class="copy-api-button" onclick="copyApiExample(this)">Copy</button></div>
                     
                     <h4>Example Response:</h4>
                     <div class="code-block">{
@@ -592,8 +700,7 @@
   "paused": false,
   "remaining": 300.5,
   "finished": false,
-  "total": 600,
-  "connected_clients": 3
+  "total": 600
 }</div>
                     
                     <h4>Response Fields:</h4>
@@ -603,7 +710,6 @@
                         <li><strong>remaining:</strong> Seconds remaining (decimal precision)</li>
                         <li><strong>finished:</strong> Whether the timer has reached zero</li>
                         <li><strong>total:</strong> Total timer duration in seconds</li>
-                        <li><strong>connected_clients:</strong> Number of active display clients</li>
                     </ul>
                 </div>
                 
@@ -615,13 +721,7 @@
                     <p>Start timer with specified duration (requires IP whitelist access)</p>
                     
                     <h4>Example Request:</h4>
-                    <div class="code-block">curl -X POST http://your-server/api/start \
-  -H "Content-Type: application/json" \
-  -d '{
-    "hours": 0,
-    "minutes": 5,
-    "seconds": 30
-  }'</div>
+                    <div class="code-block"><span class="api-example">curl -X POST http://<span id="hostname2"></span>/api/start -H "Content-Type: application/json" -d '{"hours": 0, "minutes": 5, "seconds": 30}'</span><button class="copy-api-button" onclick="copyApiExample(this)">Copy</button></div>
                     
                     <h4>Request Body Fields:</h4>
                     <ul>
@@ -645,7 +745,7 @@
                     <p>Pause or resume the timer (requires IP whitelist access)</p>
                     
                     <h4>Example Request:</h4>
-                    <div class="code-block">curl -X POST http://your-server/api/pause</div>
+                    <div class="code-block"><span class="api-example">curl -X POST http://<span id="hostname3"></span>/api/pause</span><button class="copy-api-button" onclick="copyApiExample(this)">Copy</button></div>
                     
                     <h4>Success Response:</h4>
                     <div class="code-block">{"success": true}</div>
@@ -659,7 +759,7 @@
                     <p>Reset timer to zero (requires IP whitelist access)</p>
                     
                     <h4>Example Request:</h4>
-                    <div class="code-block">curl -X POST http://your-server/api/reset</div>
+                    <div class="code-block"><span class="api-example">curl -X POST http://<span id="hostname4"></span>/api/reset</span><button class="copy-api-button" onclick="copyApiExample(this)">Copy</button></div>
                     
                     <h4>Success Response:</h4>
                     <div class="code-block">{"success": true}</div>
@@ -673,7 +773,7 @@
                     <p>Check whitelist status and view configuration (requires IP whitelist access)</p>
                     
                     <h4>Example Request:</h4>
-                    <div class="code-block">curl -X GET http://your-server/api/whitelist</div>
+                    <div class="code-block"><span class="api-example">curl -X GET http://<span id="hostname5"></span>/api/whitelist</span><button class="copy-api-button" onclick="copyApiExample(this)">Copy</button></div>
                     
                     <h4>Example Response:</h4>
                     <div class="code-block">{
@@ -687,33 +787,6 @@
 }</div>
                 </div>
                 
-                <div class="endpoint-section">
-                    <div class="endpoint-title">
-                        <span class="method-badge method-get">GET</span>
-                        /api/clients
-                    </div>
-                    <p>Get detailed information about connected clients (requires IP whitelist access)</p>
-                    
-                    <h4>Example Request:</h4>
-                    <div class="code-block">curl -X GET http://your-server/api/clients</div>
-                    
-                    <h4>Example Response:</h4>
-                    <div class="code-block">{
-  "connected_count": 2,
-  "clients": [
-    {
-      "ip": "192.168.1.100",
-      "last_seen": "14:30:25",
-      "seconds_ago": 2
-    },
-    {
-      "ip": "192.168.1.101", 
-      "last_seen": "14:30:20",
-      "seconds_ago": 7
-    }
-  ]
-}</div>
-                </div>
             </div>
         </div>
         
@@ -722,17 +795,31 @@
             <div class="section">
                 <h2>Setup & Configuration</h2>
                 
+                <h3>Installation</h3>
+                <div class="code-block"># Install Node.js dependencies
+npm install
+
+# Start the server
+npm start
+
+# For development with auto-restart
+npm run dev
+
+# Server will start on http://0.0.0.0:80
+# Access timer display: http://your-server/
+# Access control panel: http://your-server/control</div>
+                
                 <h3>IP Whitelist Configuration</h3>
                 <p>Control access is restricted to whitelisted IPs. Configure using either method:</p>
                 
                 <h4>Method 1: Code Configuration</h4>
-                <p>Edit the <code>CONTROL_WHITELIST</code> array in <code>timer.py</code>:</p>
-                <div class="code-block">CONTROL_WHITELIST = [
-    '127.0.0.1',       # localhost
-    '::1',             # localhost IPv6
-    '192.168.1.0/24',  # home network
-    '10.0.0.100',      # specific office IP
-]</div>
+                <p>Edit the <code>CONTROL_WHITELIST</code> array in <code>server.js</code>:</p>
+                <div class="code-block">let CONTROL_WHITELIST = [
+    '127.0.0.1',       // localhost
+    '::1',             // localhost IPv6
+    '192.168.1.0/24',  // home network
+    '10.0.0.100',      // specific office IP
+];</div>
                 
                 <h4>Method 2: JSON File</h4>
                 <p>Create <code>control_whitelist.json</code> in the same directory:</p>
@@ -750,39 +837,35 @@
                     <li><strong>IPv6:</strong> <code>::1</code> or <code>2001:db8::/32</code></li>
                 </ul>
                 
-                <h3>Installation & Running</h3>
-                <div class="code-block"># Install Python dependencies
-pip install flask
-
-# Run the server
-python timer.py
-
-# Server will start on http://0.0.0.0:80
-# Access timer display: http://your-server/
-# Access control panel: http://your-server/control</div>
-                
                 <h3>File Structure</h3>
                 <div class="code-block">timer/
-├── timer.py              # Main server file
-├── control_whitelist.json # IP whitelist (optional)
-└── templates/
-    ├── timer.html         # Timer display template
-    ├── control.html       # Control panel template
-    └── help.html          # This help page template</div>
+├── server.js                # Main Node.js server file
+├── package.json             # Node.js dependencies
+├── control_whitelist.json   # IP whitelist (optional)
+├── views/                   # EJS templates
+│   ├── timer.ejs           # Timer display template
+│   ├── control.ejs         # Control panel template
+│   └── help.ejs            # This help page template
+└── static/                  # Static assets
+    ├── css_timer.css
+    ├── css_control.css
+    └── ...</div>
                 
                 <h3>Production Deployment</h3>
                 <p>For production use, consider:</p>
                 <ul>
-                    <li>Use a WSGI server like Gunicorn instead of Flask's development server</li>
+                    <li>Use a process manager like PM2 for automatic restarts</li>
                     <li>Put the application behind a reverse proxy like Nginx</li>
                     <li>Enable HTTPS for secure connections</li>
                     <li>Configure proper firewall rules</li>
-                    <li>Set up process monitoring and automatic restart</li>
+                    <li>Set up monitoring and logging</li>
                 </ul>
                 
-                <h4>Example Gunicorn Command:</h4>
-                <div class="code-block">pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:8000 timer:app</div>
+                <h4>Example PM2 Usage:</h4>
+                <div class="code-block">npm install pm2 -g
+pm2 start server.js --name "timer-app"
+pm2 save
+pm2 startup</div>
                 
                 <div class="alert alert-info">
                     <strong>Security Note:</strong> The timer display (/) is publicly accessible, but control functions (/control, /api/start, /api/pause, /api/reset) require whitelisted IP addresses.
@@ -811,10 +894,12 @@ gunicorn -w 4 -b 0.0.0.0:8000 timer:app</div>
         function updateUrl() {
             const bgColor = encodeURIComponent(document.getElementById('bgColorText').value || '#000000');
             const fontColor = encodeURIComponent(document.getElementById('fontColorText').value || '#00ff00');
+            const warningColor = encodeURIComponent(document.getElementById('warningColorText').value || '#ff4444');
             const showSeconds = document.getElementById('showSeconds').checked ? 'true' : 'false';
             const hideHourAuto = document.getElementById('hideHourAuto').checked ? 'on' : 'off';
+            const position = document.getElementById('position').value || 'center';
             
-            const url = `/?background=${bgColor}&font-color=${fontColor}&show-seconds=${showSeconds}&hide-hour-auto=${hideHourAuto}`;
+            const url = `/?background=${bgColor}&font-color=${fontColor}&warning-color=${warningColor}&show-seconds=${showSeconds}&hide-hour-auto=${hideHourAuto}&position=${position}`;
             document.getElementById('generatedUrl').textContent = url;
         }
         
@@ -854,12 +939,12 @@ gunicorn -w 4 -b 0.0.0.0:8000 timer:app</div>
         
         function applyPreset(preset) {
             const presets = {
-                classic: { bg: '#000000', font: '#00ff00', seconds: true, hideHour: false },
-                matrix: { bg: '#001100', font: '#00ff41', seconds: true, hideHour: false },
-                modern: { bg: '#2d3748', font: '#63b3ed', seconds: true, hideHour: true },
-                minimal: { bg: '#ffffff', font: '#2d3748', seconds: false, hideHour: true },
-                red: { bg: '#000000', font: '#ff4444', seconds: true, hideHour: false },
-                purple: { bg: '#1a1625', font: '#9f7aea', seconds: true, hideHour: false }
+                classic: { bg: '#000000', font: '#00ff00', warning: '#ff4444', seconds: true, hideHour: false, position: 'center' },
+                matrix: { bg: '#001100', font: '#00ff41', warning: '#ff0000', seconds: true, hideHour: false, position: 'center' },
+                modern: { bg: '#2d3748', font: '#63b3ed', warning: '#f56565', seconds: true, hideHour: true, position: 'center' },
+                minimal: { bg: '#ffffff', font: '#2d3748', warning: '#e53e3e', seconds: false, hideHour: true, position: 'center' },
+                red: { bg: '#000000', font: '#ff4444', warning: '#ff0000', seconds: true, hideHour: false, position: 'center' },
+                purple: { bg: '#1a1625', font: '#9f7aea', warning: '#ed64a6', seconds: true, hideHour: false, position: 'center' }
             };
             
             const p = presets[preset];
@@ -867,8 +952,11 @@ gunicorn -w 4 -b 0.0.0.0:8000 timer:app</div>
             document.getElementById('bgColorText').value = p.bg;
             document.getElementById('fontColor').value = p.font;
             document.getElementById('fontColorText').value = p.font;
+            document.getElementById('warningColor').value = p.warning;
+            document.getElementById('warningColorText').value = p.warning;
             document.getElementById('showSeconds').checked = p.seconds;
             document.getElementById('hideHourAuto').checked = p.hideHour;
+            document.getElementById('position').value = p.position;
             
             updateUrl();
         }
@@ -898,11 +986,72 @@ gunicorn -w 4 -b 0.0.0.0:8000 timer:app</div>
             updateUrl();
         });
         
+        document.getElementById('warningColor').addEventListener('input', (e) => {
+            document.getElementById('warningColorText').value = e.target.value;
+            updateUrl();
+        });
+        
+        document.getElementById('warningColorText').addEventListener('input', (e) => {
+            if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('warningColor').value = e.target.value;
+            }
+            updateUrl();
+        });
+        
         document.getElementById('showSeconds').addEventListener('change', updateUrl);
         document.getElementById('hideHourAuto').addEventListener('change', updateUrl);
+        document.getElementById('position').addEventListener('change', updateUrl);
         
         // Initialize URL on page load
         updateUrl();
+        
+        // Set hostname in all API examples
+        function setHostnames() {
+            const hostname = window.location.host;
+            for (let i = 1; i <= 5; i++) {
+                const element = document.getElementById(`hostname${i}`);
+                if (element) {
+                    element.textContent = hostname;
+                }
+            }
+        }
+        
+        // Copy API example
+        function copyApiExample(button) {
+            const codeBlock = button.parentElement;
+            const apiExample = codeBlock.querySelector('.api-example');
+            const text = apiExample.textContent;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showApiCopied(button);
+                }).catch(err => {
+                    console.error('Clipboard error:', err);
+                });
+            } else {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showApiCopied(button);
+            }
+        }
+        
+        function showApiCopied(button) {
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.style.background = '#059669';
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '';
+            }, 2000);
+        }
+        
+        // Set hostnames on page load
+        setHostnames();
     </script>
 </body>
 </html>

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timer Control</title>
-    <link href="{{ url_for('static', filename='css_control.css') }}" rel="stylesheet">
+    <link href="/css_control.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -82,51 +82,6 @@
             letter-spacing: -0.025em;
         }
         
-        .clients-display {
-            background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
-            border-radius: 12px;
-            padding: clamp(8px, 3vw, 10px);
-            margin-bottom: clamp(8px, 4vw, 10px);
-            text-align: center;
-            border: 1px solid #81d4fa;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .clients-display::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            animation: shimmer 3s infinite;
-        }
-        
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-        
-        .clients-count {
-            font-size: clamp(1.2rem, 4vw, 1.5rem);
-            font-weight: 700;
-            color: #0277bd;
-            margin-bottom: 4px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .clients-label {
-            color: #0288d1;
-            font-size: clamp(0.75rem, 2.5vw, 0.85rem);
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            position: relative;
-            z-index: 1;
-        }
         
         .status-display {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -381,9 +336,10 @@
             height: clamp(14px, 3vw, 16px);
         }
         
-		
 
-		
+	
+
+	
         .notification {
             position: fixed;
             top: 20px;
@@ -505,7 +461,7 @@
                 margin-bottom: 16px;
             }
             
-            .clients-display, .status-display {
+            .status-display {
                 margin-bottom: 16px;
                 padding: 16px;
             }
@@ -535,7 +491,7 @@
                 margin-bottom: 12px;
             }
             
-            .clients-display, .status-display {
+            .status-display {
                 padding: 12px;
                 margin-bottom: 12px;
             }
@@ -571,10 +527,6 @@
     <div class="control-container">
         <h1 class="title">Timer Control</h1>
         
-        <div class="clients-display">
-            <div class="clients-count" id="clientsCount">0</div>
-            <div class="clients-label">Connected Displays</div>
-        </div>
         
         <div class="status-display">
             <div class="status-time" id="statusTime">00:00:00</div>
@@ -644,7 +596,6 @@
     <script>
         const statusTime = document.getElementById('statusTime');
         const statusInfo = document.getElementById('statusInfo');
-        const clientsCount = document.getElementById('clientsCount');
         const notification = document.getElementById('notification');
         
         function formatTime(totalSeconds) {
@@ -688,7 +639,6 @@
                         // IP not whitelisted
                         statusInfo.textContent = 'Access Denied - IP Not Whitelisted';
                         statusTime.textContent = '--:--:--';
-                        clientsCount.textContent = '--';
                         showNotification('Access denied: Your IP is not whitelisted for control access', 'error');
                         return;
                     }
@@ -699,9 +649,6 @@
                     
                     const remaining = Math.ceil(data.remaining);
                     statusTime.textContent = formatTime(remaining);
-                    
-                    // Update connected clients count
-                    clientsCount.textContent = data.connected_clients || 0;
                     
                     statusInfo.className = 'status-info';
                     
@@ -718,7 +665,6 @@
                 .catch(error => {
                     //console.error('Error fetching status:', error);
                     statusInfo.textContent = 'Connection Error';
-                    clientsCount.textContent = '--';
                 });
         }
         
