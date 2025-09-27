@@ -48,6 +48,8 @@ async function fetchStatus() {
       timerElem.style.visibility = "visible";
       if (remaining <= 60) {
         document.body.style.color = "red";
+      } else if (remaining <= 300) {
+        document.body.style.color = "#ff8800";
       } else {
         document.body.style.color = originalColor;
       }

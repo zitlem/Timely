@@ -155,11 +155,16 @@ function isIPWhitelisted(ip) {
 // Routes
 app.get('/', (req, res) => {
     // Get URL parameters with defaults
-    const background = req.query.background || '#000000';
+    const transparentBg = req.query['transparent-bg'] === 'true';
+    const background = transparentBg ? 'transparent' : (req.query.background || '#000000');
     const fontColor = req.query['font-color'] || '#00ff00';
-    const warningColor = req.query['warning-color'] || '#ff4444';
+    const warningColor1 = req.query['warning-color-1'] || '#ff8800';
+    const warningColor2 = req.query['warning-color-2'] || '#ff4444';
     const showSeconds = req.query['show-seconds'] !== 'false';
     const hideHourAuto = req.query['hide-hour-auto'] === 'on';
+    const hideSecondsOverHour = req.query['hide-seconds-over-hour'] === 'true';
+    const showShadow = req.query['no-shadow'] !== 'true';
+    const fontSize = parseInt(req.query['font-size']) || 100;
     let position = (req.query.position || 'center').toLowerCase();
     
     // Validate position parameter
@@ -170,10 +175,15 @@ app.get('/', (req, res) => {
     
     res.render('timer', {
         background,
+        transparent_bg: transparentBg,
         font_color: fontColor,
-        warning_color: warningColor,
+        warning_color_1: warningColor1,
+        warning_color_2: warningColor2,
         show_seconds: showSeconds,
         hide_hour_auto: hideHourAuto,
+        hide_seconds_over_hour: hideSecondsOverHour,
+        show_shadow: showShadow,
+        font_size: fontSize,
         position
     });
 });

@@ -18,6 +18,7 @@
             width: 100vw;
             overflow: hidden;
             background-color: <%= background %>;
+            <% if (transparent_bg) { %>background: transparent;<% } %>
             font-family: 'Share Tech Mono', 'Courier New', monospace;
             display: flex;
             align-items: center;
@@ -38,25 +39,25 @@
         .timer-container.position-top-left {
             justify-content: flex-start;
             align-items: flex-start;
-            padding: 5vh 5vw;
+            padding: 1vh 1vw;
         }
-        
+
         .timer-container.position-top-right {
             justify-content: flex-start;
             align-items: flex-end;
-            padding: 5vh 5vw;
+            padding: 1vh 1vw;
         }
-        
+
         .timer-container.position-bottom-left {
             justify-content: flex-end;
             align-items: flex-start;
-            padding: 5vh 5vw;
+            padding: 1vh 1vw;
         }
-        
+
         .timer-container.position-bottom-right {
             justify-content: flex-end;
             align-items: flex-end;
-            padding: 5vh 5vw;
+            padding: 1vh 1vw;
         }
         
         .timer-container.position-center {
@@ -65,33 +66,57 @@
         }
         
         .timer-display {
-            font-size: min(20vw, 15vh);
+            font-size: min(<%= (20 * font_size / 100) %>vw, <%= (15 * font_size / 100) %>vh);
             font-weight: bold;
             color: <%= font_color %>;
-            text-shadow: 0 0 20px currentColor;
+            <% if (show_shadow) { %>
+                text-shadow: 0 0 <%= (20 * font_size / 100) %>px currentColor;
+            <% } else { %>text-shadow: none;<% } %>
             letter-spacing: 0.1em;
             transition: color 0.3s ease, text-shadow 0.3s ease;
             user-select: none;
             line-height: 1;
         }
         
-        .timer-display.warning {
-            color: <%= warning_color %> !important;
-            text-shadow: 0 0 30px <%= warning_color %>;
+        .timer-display.warning1 {
+            color: <%= warning_color_1 %> !important;
+            <% if (show_shadow) { %>
+                text-shadow: 0 0 <%= (30 * font_size / 100) %>px <%= warning_color_1 %>;
+            <% } else { %>text-shadow: none;<% } %>
+        }
+
+        .timer-display.warning2 {
+            color: <%= warning_color_2 %> !important;
+            <% if (show_shadow) { %>
+                text-shadow: 0 0 <%= (30 * font_size / 100) %>px <%= warning_color_2 %>;
+            <% } else { %>text-shadow: none;<% } %>
         }
         
         .timer-display.flashing {
-            animation: flash 0.5s infinite alternate;
+            animation: flash 1s ease-in-out infinite;
         }
         
         @keyframes flash {
             0% {
-                color: <%= warning_color %>;
-                text-shadow: 0 0 40px <%= warning_color %>;
+                opacity: 1;
+                color: <%= warning_color_2 %>;
+                <% if (show_shadow) { %>
+                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px <%= warning_color_2 %>;
+                <% } else { %>text-shadow: none;<% } %>
+            }
+            50% {
+                opacity: 0.2;
+                color: <%= warning_color_2 %>;
+                <% if (show_shadow) { %>
+                    text-shadow: 0 0 <%= (10 * font_size / 100) %>px <%= warning_color_2 %>;
+                <% } else { %>text-shadow: none;<% } %>
             }
             100% {
-                color: #ffffff;
-                text-shadow: 0 0 40px #ffffff;
+                opacity: 1;
+                color: <%= warning_color_2 %>;
+                <% if (show_shadow) { %>
+                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px <%= warning_color_2 %>;
+                <% } else { %>text-shadow: none;<% } %>
             }
         }
         
@@ -167,9 +192,17 @@
         
         @media (max-width: 600px) {
             .timer-display {
-                font-size: min(18vw, 12vh);
+                font-size: min(<%= (18 * font_size / 100) %>vw, <%= (12 * font_size / 100) %>vh);
             }
-            
+
+            /* Adjust corner positioning for mobile */
+            .timer-container.position-top-left,
+            .timer-container.position-top-right,
+            .timer-container.position-bottom-left,
+            .timer-container.position-bottom-right {
+                padding: 0.5vh 0.5vw;
+            }
+
             .connection-status {
                 top: 10px;
                 right: 10px;
@@ -180,7 +213,7 @@
         
         @media (max-height: 400px) {
             .timer-display {
-                font-size: min(15vw, 20vh);
+                font-size: min(<%= (15 * font_size / 100) %>vw, <%= (20 * font_size / 100) %>vh);
             }
         }
     </style>
@@ -196,6 +229,7 @@
         const connectionStatus = document.getElementById('connectionStatus');
         const showSeconds = <%- JSON.stringify(show_seconds) %>;
         const hideHourAuto = <%- JSON.stringify(hide_hour_auto) %>;
+        const hideSecondsOverHour = <%- JSON.stringify(hide_seconds_over_hour) %>;
         
         // Timer state for offline operation
         let timerState = {
@@ -218,22 +252,53 @@
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             const seconds = Math.floor(totalSeconds % 60);
-            
+
             let timeString = '';
-            
-            // Determine if we should show hours
-            const shouldShowHours = !hideHourAuto || hours > 0;
-            
+
+            // When both hideSecondsOverHour and hideHourAuto are enabled,
+            // we need special logic to prevent character count jumping
+            if (hideSecondsOverHour && hideHourAuto) {
+                // Special mode: maintain consistent character count
+                if (totalSeconds > 3600) {
+                    // Above 1 hour: show H:MM format (no seconds)
+                    const shouldShowSeconds = false;
+                    const shouldShowHours = true;
+
+                    timeString = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+                } else {
+                    // At or below 1 hour: show MM:SS format (no hours)
+                    const shouldShowSeconds = showSeconds;
+                    const shouldShowHours = false;
+
+                    timeString = String(minutes).padStart(2, '0');
+                    if (shouldShowSeconds) {
+                        timeString += ':' + String(seconds).padStart(2, '0');
+                    }
+                }
+
+                return timeString;
+            }
+
+            // Normal logic for other cases
+            const shouldShowSeconds = showSeconds && !(hideSecondsOverHour && totalSeconds > 3600);
+            let shouldShowHours;
+
+            if (!hideHourAuto) {
+                shouldShowHours = true;
+            } else {
+                shouldShowHours = hours > 0;
+            }
+
             if (shouldShowHours) {
                 timeString = String(hours).padStart(2, '0') + ':';
             }
-            
+
             timeString += String(minutes).padStart(2, '0');
-            
-            if (showSeconds) {
+
+            if (shouldShowSeconds) {
                 timeString += ':' + String(seconds).padStart(2, '0');
             }
-            
+
             return timeString;
         }
         
@@ -249,13 +314,19 @@
         function updateLocalTimer() {
             if (timerState.running && timerState.localStartTime) {
                 const elapsed = (Date.now() - timerState.localStartTime) / 1000;
-                timerState.localRemaining = Math.max(0, timerState.remaining - elapsed);
-                
-                // Check if timer finished locally
-                if (timerState.localRemaining <= 0 && !timerState.finished) {
-                    timerState.finished = true;
-                    timerState.running = false;
-                    startFlashing();
+                const newRemaining = timerState.remaining - elapsed;
+
+                // Only update if we have a positive value or if we're crossing zero
+                if (newRemaining >= 0) {
+                    timerState.localRemaining = newRemaining;
+                } else {
+                    timerState.localRemaining = 0;
+                    // Check if timer finished locally
+                    if (!timerState.finished) {
+                        timerState.finished = true;
+                        timerState.running = false;
+                        startFlashing();
+                    }
                 }
             }
         }
@@ -270,7 +341,7 @@
                 displayTime = timerState.localRemaining;
             }
             
-            displayTime = Math.max(0, Math.ceil(displayTime));
+            displayTime = Math.max(0, Math.floor(displayTime));
             
             // Force display to 00:00:00 when timer is finished
             if (timerState.finished || displayTime <= 0) {
@@ -282,16 +353,25 @@
             // Handle color changes and flashing
             if (timerState.finished || displayTime <= 0) {
                 if (!isFlashing) {
+                    // Ensure we're in warning2 state before flashing
+                    timerDisplay.classList.remove('warning1');
+                    timerDisplay.classList.add('warning2');
                     startFlashing();
                 }
             } else if (displayTime <= 60 && displayTime > 0) {
-                // Warning state - red color but no flashing
+                // Final warning state (1 minute) - intense warning color but no flashing
                 stopFlashing();
-                timerDisplay.classList.add('warning');
+                timerDisplay.classList.remove('warning1');
+                timerDisplay.classList.add('warning2');
+            } else if (displayTime <= 300 && displayTime > 0) {
+                // First warning state (5 minutes) - warning color but no flashing
+                stopFlashing();
+                timerDisplay.classList.remove('warning2');
+                timerDisplay.classList.add('warning1');
             } else {
-                // Normal state
+                // Normal state - explicitly remove all warning classes
                 stopFlashing();
-                timerDisplay.classList.remove('warning');
+                timerDisplay.classList.remove('warning1', 'warning2');
             }
             
             // Add blinking separators when running (but not when finished)
@@ -307,25 +387,32 @@
         
         function syncWithServer(serverData) {
             const wasOffline = !isOnline;
-            
+
             // Update timer state from server
             const oldRunning = timerState.running;
+            const oldRemaining = timerState.remaining;
+
             timerState.running = serverData.running;
             timerState.paused = serverData.paused;
             timerState.remaining = serverData.remaining;
             timerState.finished = serverData.finished;
             timerState.lastServerSync = Date.now();
-            
-            // If timer just started running, set local start time
-            if (serverData.running && !oldRunning) {
+
+            // Sync local timer more precisely
+            if (serverData.running) {
+                // Always resync when running to prevent drift
                 timerState.localStartTime = Date.now();
                 timerState.localRemaining = serverData.remaining;
-            } else if (serverData.running) {
-                // Resync local timer to server time
-                timerState.localStartTime = Date.now();
+
+                // If this is a new start or significant change, force immediate display update
+                if (!oldRunning || Math.abs(oldRemaining - serverData.remaining) > 1) {
+                    updateDisplay();
+                }
+            } else if (!serverData.running && oldRunning) {
+                // Timer was stopped
                 timerState.localRemaining = serverData.remaining;
             }
-            
+
             if (wasOffline) {
                 isOnline = true;
                 consecutiveErrors = 0;
@@ -365,11 +452,13 @@
         
         function startFlashing() {
             if (isFlashing) return;
-            
+
             isFlashing = true;
             timerDisplay.classList.add('flashing');
-            timerDisplay.classList.remove('warning');
-            
+            // Keep warning2 class for proper color during flashing
+            timerDisplay.classList.remove('warning1');
+            timerDisplay.classList.add('warning2');
+
             // Stop flashing after 10 seconds
             flashingTimeout = setTimeout(() => {
                 stopFlashing();
@@ -387,14 +476,11 @@
             }
         }
         
-        // Update timer every 100ms for smooth display
-        setInterval(() => {
-            updateTimer();
-            updateDisplay();
-        }, 1000); // 1000ms = 1 request/sec
-        
-        // Also update display more frequently for smooth countdown
-        setInterval(updateDisplay, 50);
+        // Update from server every second
+        setInterval(updateTimer, 1000);
+
+        // Update display more frequently for smooth countdown (100ms for better performance)
+        setInterval(updateDisplay, 100);
         
         // Handle page visibility changes to resync when tab becomes active
         document.addEventListener('visibilitychange', () => {

@@ -529,16 +529,28 @@
                             <td>#000000, #1a1a1a, #2d3748</td>
                         </tr>
                         <tr>
+                            <td><code>transparent-bg</code></td>
+                            <td>Enable transparent background</td>
+                            <td>false</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
                             <td><code>font-color</code></td>
                             <td>Text color (hex)</td>
                             <td>#00ff00</td>
                             <td>#ffffff, #00ff00, #ff6b6b</td>
                         </tr>
                         <tr>
-                            <td><code>warning-color</code></td>
+                            <td><code>warning-color-1</code></td>
+                            <td>Warning color for last 5 minutes (hex)</td>
+                            <td>#ff8800</td>
+                            <td>#ff8800, #ffaa00, #ffd700</td>
+                        </tr>
+                        <tr>
+                            <td><code>warning-color-2</code></td>
                             <td>Warning color for last minute (hex)</td>
                             <td>#ff4444</td>
-                            <td>#ff0000, #ff8800, #ffaa00</td>
+                            <td>#ff0000, #ff4444, #cc0000</td>
                         </tr>
                         <tr>
                             <td><code>show-seconds</code></td>
@@ -553,10 +565,28 @@
                             <td>on, off</td>
                         </tr>
                         <tr>
+                            <td><code>hide-seconds-over-hour</code></td>
+                            <td>Hide seconds when timer > 1 hour</td>
+                            <td>false</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
                             <td><code>position</code></td>
                             <td>Timer display position</td>
                             <td>center</td>
                             <td>center, top-left, top-right, bottom-left, bottom-right</td>
+                        </tr>
+                        <tr>
+                            <td><code>font-size</code></td>
+                            <td>Font size as percentage (50-200%)</td>
+                            <td>100</td>
+                            <td>50, 75, 100, 120, 150, 200</td>
+                        </tr>
+                        <tr>
+                            <td><code>no-shadow</code></td>
+                            <td>Disable text shadow/glow effect</td>
+                            <td>false</td>
+                            <td>true, false</td>
                         </tr>
                     </tbody>
                 </table>
@@ -571,14 +601,29 @@
 <!-- Blue theme with auto-hide hours -->
 /?background=%232d3748&font-color=%2363b3ed&hide-hour-auto=on
 
+<!-- Hide seconds when timer > 1 hour -->
+/?background=%23000000&font-color=%2300ff00&hide-seconds-over-hour=true
+
 <!-- Timer positioned in top-left corner -->
 /?position=top-left&background=%23000000&font-color=%2300ff00
 
 <!-- Timer in bottom-right with red text -->
 /?position=bottom-right&font-color=%23ff0000&show-seconds=false
 
-<!-- Custom warning color (orange) -->
-/?warning-color=%23ff8800&background=%23000000&font-color=%2300ff00</div>
+<!-- Custom warning colors (orange for 5min, red for 1min) -->
+/?warning-color-1=%23ff8800&warning-color-2=%23ff0000&background=%23000000&font-color=%2300ff00
+
+<!-- Timer without shadow/glow effect -->
+/?no-shadow=true&background=%23ffffff&font-color=%23000000
+
+<!-- Large font size (150%) -->
+/?font-size=150&background=%23000000&font-color=%2300ff00
+
+<!-- Small font size (75%) for overlay -->
+/?font-size=75&transparent-bg=true&font-color=%23ffffff
+
+<!-- Transparent background for overlay use -->
+/?transparent-bg=true&font-color=%23ffffff&no-shadow=true</div>
                 
                 <div class="alert alert-warning">
                     <strong>Note:</strong> URL encode color values (# becomes %23). The URL builder below handles this automatically.
@@ -599,6 +644,10 @@
                             <input type="color" id="bgColor" value="#000000">
                             <input type="text" id="bgColorText" value="#000000" placeholder="#000000">
                         </div>
+                        <div class="checkbox-group" style="margin-top: 10px;">
+                            <input type="checkbox" id="transparentBg">
+                            <label for="transparentBg">Use transparent background (overrides color)</label>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -610,13 +659,31 @@
                     </div>
                     
                     <div class="form-group">
-                        <label>Warning Color (Last Minute)</label>
+                        <label>Warning Color 1 (Last 5 Minutes)</label>
                         <div class="color-input-group">
-                            <input type="color" id="warningColor" value="#ff4444">
-                            <input type="text" id="warningColorText" value="#ff4444" placeholder="#ff4444">
+                            <input type="color" id="warningColor1" value="#ff8800">
+                            <input type="text" id="warningColor1Text" value="#ff8800" placeholder="#ff8800">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Warning Color 2 (Last Minute)</label>
+                        <div class="color-input-group">
+                            <input type="color" id="warningColor2" value="#ff4444">
+                            <input type="text" id="warningColor2Text" value="#ff4444" placeholder="#ff4444">
                         </div>
                     </div>
                     
+                    <div class="form-group">
+                        <label>Font Size</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button type="button" id="decreaseFontSize" style="background: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">−</button>
+                            <input type="range" id="fontSize" min="50" max="200" value="100" style="flex: 1;">
+                            <button type="button" id="increaseFontSize" style="background: #10b981; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">+</button>
+                            <span id="fontSizeValue" style="min-width: 50px; text-align: center; font-weight: bold;">100%</span>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Timer Position</label>
                         <select id="position">
@@ -638,12 +705,20 @@
                             <input type="checkbox" id="hideHourAuto">
                             <label for="hideHourAuto">Auto-hide hours when zero</label>
                         </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="hideSecondsOverHour">
+                            <label for="hideSecondsOverHour">Hide seconds when timer > 1 hour</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="noShadow">
+                            <label for="noShadow">Disable text shadow/glow</label>
+                        </div>
                     </div>
                     
                     <div class="form-group">
                         <label>Generated URL</label>
                         <div class="generated-url">
-                            <span id="generatedUrl">/?background=%23000000&font-color=%2300ff00&warning-color=%23ff4444&show-seconds=true&hide-hour-auto=off&position=center</span>
+                            <span id="generatedUrl">/?background=%23000000&font-color=%2300ff00&warning-color-1=%23ff8800&warning-color-2=%23ff4444&show-seconds=true&hide-hour-auto=off&position=center</span>
                             <button class="copy-button" onclick="copyUrl()">Copy</button>
                         </div>
                         <button class="preview-button" onclick="previewTimer()">Preview Timer</button>
@@ -675,6 +750,10 @@
                     <a href="#" class="quick-link" onclick="applyPreset('purple')">
                         Purple Glow<br>
                         <small>Dark bg, purple text</small>
+                    </a>
+                    <a href="#" class="quick-link" onclick="applyPreset('overlay')">
+                        Transparent Overlay<br>
+                        <small>Transparent bg, white text</small>
                     </a>
                 </div>
             </div>
@@ -894,13 +973,36 @@ pm2 startup</div>
         
         function updateUrl() {
             const bgColor = encodeURIComponent(document.getElementById('bgColorText').value || '#000000');
+            const transparentBg = document.getElementById('transparentBg').checked;
             const fontColor = encodeURIComponent(document.getElementById('fontColorText').value || '#00ff00');
-            const warningColor = encodeURIComponent(document.getElementById('warningColorText').value || '#ff4444');
+            const warningColor1 = encodeURIComponent(document.getElementById('warningColor1Text').value || '#ff8800');
+            const warningColor2 = encodeURIComponent(document.getElementById('warningColor2Text').value || '#ff4444');
             const showSeconds = document.getElementById('showSeconds').checked ? 'true' : 'false';
             const hideHourAuto = document.getElementById('hideHourAuto').checked ? 'on' : 'off';
+            const hideSecondsOverHour = document.getElementById('hideSecondsOverHour').checked ? 'true' : 'false';
+            const noShadow = document.getElementById('noShadow').checked ? 'true' : 'false';
+            const fontSize = document.getElementById('fontSize').value || '100';
             const position = document.getElementById('position').value || 'center';
-            
-            const url = `/?background=${bgColor}&font-color=${fontColor}&warning-color=${warningColor}&show-seconds=${showSeconds}&hide-hour-auto=${hideHourAuto}&position=${position}`;
+
+            let url = `/?font-color=${fontColor}&warning-color-1=${warningColor1}&warning-color-2=${warningColor2}&show-seconds=${showSeconds}&hide-hour-auto=${hideHourAuto}&position=${position}`;
+
+            if (hideSecondsOverHour === 'true') {
+                url += `&hide-seconds-over-hour=${hideSecondsOverHour}`;
+            }
+
+            if (fontSize !== '100') {
+                url += `&font-size=${fontSize}`;
+            }
+
+            if (transparentBg) {
+                url += `&transparent-bg=true`;
+            } else {
+                url = `/?background=${bgColor}&` + url.substring(2); // Remove /? and add background
+            }
+
+            if (noShadow === 'true') {
+                url += `&no-shadow=${noShadow}`;
+            }
             document.getElementById('generatedUrl').textContent = url;
         }
         
@@ -940,25 +1042,33 @@ pm2 startup</div>
         
         function applyPreset(preset) {
             const presets = {
-                classic: { bg: '#000000', font: '#00ff00', warning: '#ff4444', seconds: true, hideHour: false, position: 'center' },
-                matrix: { bg: '#001100', font: '#00ff41', warning: '#ff0000', seconds: true, hideHour: false, position: 'center' },
-                modern: { bg: '#2d3748', font: '#63b3ed', warning: '#f56565', seconds: true, hideHour: true, position: 'center' },
-                minimal: { bg: '#ffffff', font: '#2d3748', warning: '#e53e3e', seconds: false, hideHour: true, position: 'center' },
-                red: { bg: '#000000', font: '#ff4444', warning: '#ff0000', seconds: true, hideHour: false, position: 'center' },
-                purple: { bg: '#1a1625', font: '#9f7aea', warning: '#ed64a6', seconds: true, hideHour: false, position: 'center' }
+                classic: { bg: '#000000', font: '#00ff00', warning1: '#ff8800', warning2: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, fontSize: 100, position: 'center' },
+                matrix: { bg: '#001100', font: '#00ff41', warning1: '#ff8800', warning2: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, fontSize: 100, position: 'center' },
+                modern: { bg: '#2d3748', font: '#63b3ed', warning1: '#ffa500', warning2: '#f56565', seconds: true, hideHour: true, hideSecondsOverHour: true, noShadow: false, transparentBg: false, fontSize: 100, position: 'center' },
+                minimal: { bg: '#ffffff', font: '#2d3748', warning1: '#f6ad55', warning2: '#e53e3e', seconds: false, hideHour: true, hideSecondsOverHour: false, noShadow: true, transparentBg: false, fontSize: 80, position: 'center' },
+                red: { bg: '#000000', font: '#ff4444', warning1: '#ff6600', warning2: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, fontSize: 130, position: 'center' },
+                purple: { bg: '#1a1625', font: '#9f7aea', warning1: '#d69e2e', warning2: '#ed64a6', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: false, transparentBg: false, fontSize: 100, position: 'center' },
+                overlay: { bg: '#000000', font: '#ffffff', warning1: '#ffaa00', warning2: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: true, transparentBg: true, fontSize: 100, position: 'center' }
             };
-            
+
             const p = presets[preset];
             document.getElementById('bgColor').value = p.bg;
             document.getElementById('bgColorText').value = p.bg;
             document.getElementById('fontColor').value = p.font;
             document.getElementById('fontColorText').value = p.font;
-            document.getElementById('warningColor').value = p.warning;
-            document.getElementById('warningColorText').value = p.warning;
+            document.getElementById('warningColor1').value = p.warning1;
+            document.getElementById('warningColor1Text').value = p.warning1;
+            document.getElementById('warningColor2').value = p.warning2;
+            document.getElementById('warningColor2Text').value = p.warning2;
             document.getElementById('showSeconds').checked = p.seconds;
             document.getElementById('hideHourAuto').checked = p.hideHour;
+            document.getElementById('hideSecondsOverHour').checked = p.hideSecondsOverHour;
+            document.getElementById('noShadow').checked = p.noShadow;
+            document.getElementById('transparentBg').checked = p.transparentBg;
+            document.getElementById('fontSize').value = p.fontSize;
+            document.getElementById('fontSizeValue').textContent = p.fontSize + '%';
             document.getElementById('position').value = p.position;
-            
+
             updateUrl();
         }
         
@@ -987,20 +1097,57 @@ pm2 startup</div>
             updateUrl();
         });
         
-        document.getElementById('warningColor').addEventListener('input', (e) => {
-            document.getElementById('warningColorText').value = e.target.value;
+        document.getElementById('warningColor1').addEventListener('input', (e) => {
+            document.getElementById('warningColor1Text').value = e.target.value;
             updateUrl();
         });
-        
-        document.getElementById('warningColorText').addEventListener('input', (e) => {
+
+        document.getElementById('warningColor1Text').addEventListener('input', (e) => {
             if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
-                document.getElementById('warningColor').value = e.target.value;
+                document.getElementById('warningColor1').value = e.target.value;
+            }
+            updateUrl();
+        });
+
+        document.getElementById('warningColor2').addEventListener('input', (e) => {
+            document.getElementById('warningColor2Text').value = e.target.value;
+            updateUrl();
+        });
+
+        document.getElementById('warningColor2Text').addEventListener('input', (e) => {
+            if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('warningColor2').value = e.target.value;
             }
             updateUrl();
         });
         
         document.getElementById('showSeconds').addEventListener('change', updateUrl);
         document.getElementById('hideHourAuto').addEventListener('change', updateUrl);
+        document.getElementById('hideSecondsOverHour').addEventListener('change', updateUrl);
+        document.getElementById('noShadow').addEventListener('change', updateUrl);
+        document.getElementById('transparentBg').addEventListener('change', updateUrl);
+        document.getElementById('fontSize').addEventListener('input', function() {
+            document.getElementById('fontSizeValue').textContent = this.value + '%';
+            updateUrl();
+        });
+
+        document.getElementById('increaseFontSize').addEventListener('click', function() {
+            const slider = document.getElementById('fontSize');
+            const currentValue = parseInt(slider.value);
+            const newValue = Math.min(200, currentValue + 10);
+            slider.value = newValue;
+            document.getElementById('fontSizeValue').textContent = newValue + '%';
+            updateUrl();
+        });
+
+        document.getElementById('decreaseFontSize').addEventListener('click', function() {
+            const slider = document.getElementById('fontSize');
+            const currentValue = parseInt(slider.value);
+            const newValue = Math.max(50, currentValue - 10);
+            slider.value = newValue;
+            document.getElementById('fontSizeValue').textContent = newValue + '%';
+            updateUrl();
+        });
         document.getElementById('position').addEventListener('change', updateUrl);
         
         // Initialize URL on page load
