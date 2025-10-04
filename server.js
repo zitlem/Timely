@@ -87,11 +87,11 @@ class CountdownTimer {
     
     getStatus() {
         const currentTime = Date.now();
-        
+
         if (this.running && this.startTime) {
             const elapsed = (currentTime - this.startTime) / 1000;
             let remaining = this.remainingSeconds - elapsed;
-            
+
             // Check if timer has finished
             if (remaining <= 0) {
                 remaining = 0;
@@ -101,21 +101,23 @@ class CountdownTimer {
                     console.log('Timer finished!');
                 }
             }
-            
+
             return {
                 running: this.running,
                 paused: this.paused,
-                remaining: remaining,
+                remaining: Math.max(0, remaining), // Ensure no negative values
                 finished: this.finished,
-                total: this.totalSeconds
+                total: this.totalSeconds,
+                serverTime: currentTime // Include server timestamp for better sync
             };
         } else {
             return {
                 running: this.running,
                 paused: this.paused,
-                remaining: this.remainingSeconds,
+                remaining: Math.max(0, this.remainingSeconds),
                 finished: this.finished,
-                total: this.totalSeconds
+                total: this.totalSeconds,
+                serverTime: currentTime
             };
         }
     }

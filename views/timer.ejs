@@ -73,9 +73,10 @@
                 text-shadow: 0 0 <%= (20 * font_size / 100) %>px currentColor;
             <% } else { %>text-shadow: none;<% } %>
             letter-spacing: 0.1em;
-            transition: color 0.3s ease, text-shadow 0.3s ease;
+            transition: color 0.3s ease, text-shadow 0.3s ease, opacity 0.1s ease, transform 0.1s ease;
             user-select: none;
             line-height: 1;
+            will-change: opacity, transform;
         }
         
         .timer-display.warning1 {
@@ -239,7 +240,8 @@
             finished: false,
             localStartTime: null,
             localRemaining: 0,
-            lastServerSync: null
+            lastServerSync: null,
+            pendingControlAction: null // Track pending control actions for responsiveness
         };
         
         let isOnline = true;
@@ -316,7 +318,7 @@
                 const elapsed = (Date.now() - timerState.localStartTime) / 1000;
                 const newRemaining = timerState.remaining - elapsed;
 
-                // Only update if we have a positive value or if we're crossing zero
+                // Keep fractional seconds for smooth display
                 if (newRemaining >= 0) {
                     timerState.localRemaining = newRemaining;
                 } else {
@@ -333,22 +335,35 @@
         
         function updateDisplay() {
             updateLocalTimer();
-            
-            let displayTime;
-            if (isOnline) {
-                displayTime = timerState.remaining;
-            } else {
-                displayTime = timerState.localRemaining;
-            }
-            
-            displayTime = Math.max(0, Math.floor(displayTime));
-            
+
+            // Always use local calculated time for smooth countdown
+            let displayTime = timerState.running ? timerState.localRemaining : timerState.remaining;
+            displayTime = Math.max(0, displayTime);
+
             // Force display to 00:00:00 when timer is finished
             if (timerState.finished || displayTime <= 0) {
                 displayTime = 0;
             }
-            
-            timerDisplay.textContent = formatTime(displayTime);
+
+            // Use fractional seconds for smooth countdown, but round for display
+            const displayTimeFormatted = formatTime(Math.floor(displayTime));
+
+            // Smooth interpolation within seconds using CSS transforms
+            const fractionalPart = displayTime - Math.floor(displayTime);
+            const smoothness = 1 - fractionalPart; // Creates smooth transition effect
+
+            // Only update text if the displayed second has changed to avoid flicker
+            if (timerDisplay.textContent !== displayTimeFormatted) {
+                timerDisplay.textContent = displayTimeFormatted;
+            }
+
+            // Apply subtle visual feedback for smooth countdown feeling
+            if (timerState.running && !timerState.finished) {
+                const opacity = 0.9 + (smoothness * 0.1); // Subtle opacity pulse
+                timerDisplay.style.opacity = opacity;
+            } else {
+                timerDisplay.style.opacity = '1';
+            }
             
             // Handle color changes and flashing
             if (timerState.finished || displayTime <= 0) {
@@ -387,30 +402,66 @@
         
         function syncWithServer(serverData) {
             const wasOffline = !isOnline;
+            const clientTime = Date.now();
+
+            // Calculate network latency compensation
+            const networkLatency = serverData.serverTime ? (clientTime - serverData.serverTime) / 2 : 0;
 
             // Update timer state from server
             const oldRunning = timerState.running;
             const oldRemaining = timerState.remaining;
+            const oldFinished = timerState.finished;
+
+            // Adjust server remaining time for network latency if timer is running
+            let adjustedRemaining = serverData.remaining;
+            if (serverData.running && networkLatency > 0) {
+                adjustedRemaining = Math.max(0, serverData.remaining - (networkLatency / 1000));
+            }
+
+            // Smooth sync: only update if there's a significant difference or state change
+            const timeDifference = Math.abs(adjustedRemaining - timerState.remaining);
+            const shouldHardSync = !oldRunning !== !serverData.running ||
+                                   !oldFinished !== !serverData.finished ||
+                                   timeDifference > 1.5 || // Reduced threshold for better accuracy
+                                   timerState.pendingControlAction; // Force sync after control actions
 
             timerState.running = serverData.running;
             timerState.paused = serverData.paused;
-            timerState.remaining = serverData.remaining;
             timerState.finished = serverData.finished;
-            timerState.lastServerSync = Date.now();
+            timerState.lastServerSync = clientTime;
+            timerState.pendingControlAction = null; // Clear pending action
 
-            // Sync local timer more precisely
-            if (serverData.running) {
-                // Always resync when running to prevent drift
-                timerState.localStartTime = Date.now();
-                timerState.localRemaining = serverData.remaining;
+            // Sync logic
+            if (!oldRunning && serverData.running) {
+                // Timer just started, initialize local timer
+                timerState.remaining = adjustedRemaining;
+                timerState.localRemaining = adjustedRemaining;
+                timerState.localStartTime = clientTime;
+            } else if (serverData.running) {
+                // Timer running, use gradual sync to prevent any jumps
+                const currentLocal = timerState.localRemaining;
+                const drift = adjustedRemaining - currentLocal; // Can be positive or negative
+                const driftMagnitude = Math.abs(drift);
 
-                // If this is a new start or significant change, force immediate display update
-                if (!oldRunning || Math.abs(oldRemaining - serverData.remaining) > 1) {
-                    updateDisplay();
+                // Adjust correction speed based on drift size
+                // With 5-second polling, spread correction over ~10 seconds (2 syncs)
+                let correctionSpeed;
+                if (driftMagnitude < 0.5) {
+                    correctionSpeed = 0.1; // Very slow correction for tiny drift
+                } else if (driftMagnitude < 2) {
+                    correctionSpeed = 0.3; // Medium correction (corrects over ~2 syncs = 10s)
+                } else {
+                    correctionSpeed = 0.4; // Faster correction for large drift (corrects over ~2 syncs = 10s)
                 }
-            } else if (!serverData.running && oldRunning) {
-                // Timer was stopped
-                timerState.localRemaining = serverData.remaining;
+
+                // Apply correction without resetting start time
+                const correction = drift * correctionSpeed;
+                timerState.remaining += correction;
+            } else {
+                // Not running, use server data directly
+                timerState.remaining = adjustedRemaining;
+                timerState.localRemaining = adjustedRemaining;
+                timerState.localStartTime = null;
             }
 
             if (wasOffline) {
@@ -479,9 +530,13 @@
         // Update from server every second
         setInterval(updateTimer, 1000);
 
-        // Update display more frequently for smooth countdown (100ms for better performance)
-        setInterval(updateDisplay, 100);
-        
+        // Update display every second
+        setInterval(updateDisplay, 1000);
+
+        // Initial update
+        updateTimer();
+        updateDisplay();
+
         // Handle page visibility changes to resync when tab becomes active
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
@@ -495,7 +550,7 @@
             //console.log('Network connection restored');
             updateTimer();
         });
-        
+
         window.addEventListener('offline', () => {
             //console.log('Network connection lost');
             if (isOnline) {
@@ -503,10 +558,54 @@
                 showConnectionStatus('Network Offline - Running Locally', 'offline', 5000);
             }
         });
-        
-        // Initial update
-        updateTimer();
-        
+
+        // Add immediate response capability for external control commands
+        // This function can be called by other parts of the application for instant feedback
+        window.timerControls = {
+            start: function(hours = 0, minutes = 0, seconds = 0) {
+                // Immediate local response
+                const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+                timerState.running = true;
+                timerState.paused = false;
+                timerState.remaining = totalSeconds;
+                timerState.localRemaining = totalSeconds;
+                timerState.finished = false;
+                timerState.localStartTime = Date.now();
+                timerState.pendingControlAction = 'start';
+                updateDisplay();
+
+                // Force immediate server sync
+                setTimeout(updateTimer, 50);
+            },
+
+            pause: function() {
+                // Immediate local response
+                timerState.running = false;
+                timerState.paused = true;
+                timerState.pendingControlAction = 'pause';
+                updateDisplay();
+
+                // Force immediate server sync
+                setTimeout(updateTimer, 50);
+            },
+
+            reset: function() {
+                // Immediate local response
+                timerState.running = false;
+                timerState.paused = false;
+                timerState.remaining = 0;
+                timerState.localRemaining = 0;
+                timerState.finished = false;
+                timerState.localStartTime = null;
+                timerState.pendingControlAction = 'reset';
+                stopFlashing();
+                updateDisplay();
+
+                // Force immediate server sync
+                setTimeout(updateTimer, 50);
+            }
+        };
+
         // Debug info (remove in production)
         //console.log('Timer display initialized');
         //console.log('Show seconds:', showSeconds);
