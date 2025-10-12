@@ -598,15 +598,47 @@
         const statusTime = document.getElementById('statusTime');
         const statusInfo = document.getElementById('statusInfo');
         const notification = document.getElementById('notification');
-        
+
+        // Local timer state for smooth countdown
+        let timerState = {
+            running: false,
+            paused: false,
+            remaining: 0,
+            localStartTime: null,
+            localRemaining: 0
+        };
+
         function formatTime(totalSeconds) {
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             const seconds = Math.floor(totalSeconds % 60);
-            
-            return String(hours).padStart(2, '0') + ':' + 
-                   String(minutes).padStart(2, '0') + ':' + 
+
+            return String(hours).padStart(2, '0') + ':' +
+                   String(minutes).padStart(2, '0') + ':' +
                    String(seconds).padStart(2, '0');
+        }
+
+function updateLocalTimer() {
+            if (timerState.running && timerState.localStartTime) {
+                const elapsed = (Date.now() - timerState.localStartTime) / 1000;
+                const newRemaining = Math.max(0, timerState.remaining - elapsed);
+                timerState.localRemaining = newRemaining;
+                
+                if (newRemaining <= 0) {
+                    timerState.running = false;
+                }
+            }
+        }
+
+        function updateDisplay() {
+            updateLocalTimer();
+
+            // Use local calculated time for smooth countdown
+            let displayTime = timerState.running ? timerState.localRemaining : timerState.remaining;
+            displayTime = Math.max(0, displayTime);
+
+            // Use Math.floor to match timer.ejs
+            statusTime.textContent = formatTime(Math.floor(displayTime));
         }
         
         function showNotification(message, type = 'success') {
@@ -647,12 +679,35 @@
                 })
                 .then(data => {
                     if (!data) return; // Handle 403 case
-                    
-                    const remaining = Math.ceil(data.remaining);
-                    statusTime.textContent = formatTime(remaining);
-                    
+
+                    const clientTime = Date.now();
+                    const oldRunning = timerState.running;
+
+                    // Update timer state from server
+                    timerState.running = data.running;
+                    timerState.paused = data.paused;
+
+// Sync logic
+                    if (!oldRunning && data.running) {
+                        // Timer just started, initialize local timer
+                        timerState.remaining = data.remaining;
+                        timerState.localRemaining = data.remaining;
+                        timerState.localStartTime = clientTime;
+                    } else if (data.running) {
+                        // Timer running, resync with server time
+                        // Update remaining to server value and reset local start time
+                        timerState.remaining = data.remaining;
+                        timerState.localRemaining = data.remaining;
+                        timerState.localStartTime = clientTime; // Reset reference point on each sync
+                    } else {
+                        // Not running, use server data directly
+                        timerState.remaining = data.remaining;
+                        timerState.localRemaining = data.remaining;
+                        timerState.localStartTime = null;
+                    }
+
                     statusInfo.className = 'status-info';
-                    
+
                     if (data.running) {
                         statusInfo.textContent = 'Running';
                         statusInfo.classList.add('running');
@@ -662,6 +717,9 @@
                     } else {
                         statusInfo.textContent = 'Ready';
                     }
+
+                    // Update display immediately after syncing
+                    updateDisplay();
                 })
                 .catch(error => {
                     //console.error('Error fetching status:', error);
@@ -763,9 +821,12 @@
             });
         }
         
-        // Update status every second for smooth display
-        setInterval(updateStatus, 1000);
-        
+        // Update status from server every .5 second
+        setInterval(updateStatus, 500);
+
+        // Update display every .5 second
+        setInterval(updateDisplay, 500);
+
         // Initial status update
         updateStatus();
         
@@ -776,6 +837,21 @@
             }
         });
         
+        // Force refresh when page becomes visible again (screen turns on, tab switches back)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                // Reset local timer state to force resync with server
+                timerState.localStartTime = null;
+                timerState.localRemaining = 0;
+                
+                // Immediately fetch fresh status from server
+                updateStatus();
+                
+                // Update display right away
+                updateDisplay();
+            }
+        });
+		
         // Add click handlers to preset buttons for visual feedback
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', function() {

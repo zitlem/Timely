@@ -510,28 +510,45 @@
             timerDisplay.classList.remove('warning1');
             timerDisplay.classList.add('warning2');
 
-            // Stop flashing after 10 seconds
+            // Stop flashing after 10 seconds, synchronized with animation cycle
             flashingTimeout = setTimeout(() => {
                 stopFlashing();
-            }, 10000);
+            }, 10000); // 10 seconds = 10 animation cycles (1s each)
         }
-        
+
         function stopFlashing() {
             if (!isFlashing) return;
-            
+
             isFlashing = false;
-            timerDisplay.classList.remove('flashing');
+
+            // Wait for current animation cycle to complete before removing class
+            // This ensures smooth transition by ending at opacity: 1
+            const removeFlashing = () => {
+                timerDisplay.classList.remove('flashing');
+            };
+
+            // Use animationiteration event to remove class at end of current cycle
+            const handleAnimationEnd = () => {
+                removeFlashing();
+                timerDisplay.removeEventListener('animationiteration', handleAnimationEnd);
+            };
+
+            timerDisplay.addEventListener('animationiteration', handleAnimationEnd, { once: true });
+
+            // Fallback: remove after max 1 animation cycle if event doesn't fire
+            setTimeout(removeFlashing, 1000);
+
             if (flashingTimeout) {
                 clearTimeout(flashingTimeout);
                 flashingTimeout = null;
             }
         }
         
-        // Update from server every second
-        setInterval(updateTimer, 1000);
+        // Update from server every .5 second
+        setInterval(updateTimer, 500);
 
-        // Update display every second
-        setInterval(updateDisplay, 1000);
+        // Update display every .5 second
+        setInterval(updateDisplay, 500);
 
         // Initial update
         updateTimer();
