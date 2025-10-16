@@ -495,6 +495,8 @@
                     <li><strong>Responsive design</strong> - Works on all screen sizes from mobile to large displays</li>
                     <li><strong>Offline resilience</strong> - Continues running even if connection is lost</li>
                     <li><strong>Visual alerts</strong> - Warning colors and flashing when time expires</li>
+                    <li><strong>Count-up mode</strong> - Timer continues counting up after reaching zero (default)</li>
+                    <li><strong>Target time countdown</strong> - Count down to a specific date and time</li>
                     <li><strong>Access control</strong> - IP whitelisting for timer controls</li>
                     <li><strong>Customizable appearance</strong> - Colors, fonts, and display options</li>
                     <li><strong>Flexible positioning</strong> - Place timer in any corner or center of screen</li>
@@ -502,6 +504,19 @@
                 
                 <div class="alert alert-info">
                     <strong>Tip:</strong> Anyone can view the timer display, but only whitelisted IPs can control it (start/pause/reset).
+                </div>
+
+                <h3>Control Panel Modes</h3>
+                <p>The control panel (<code>/control</code>) offers two modes for starting timers:</p>
+
+                <h4>Duration Mode</h4>
+                <p>Set a timer for a specific duration (hours, minutes, seconds). Use the preset buttons for quick access to common durations.</p>
+
+                <h4>Target Time Mode</h4>
+                <p>Set a timer to count down to a specific date and time. Perfect for events, deadlines, or scheduled activities. The timer automatically calculates and updates the remaining time until the target.</p>
+
+                <div class="alert alert-info">
+                    <strong>Note:</strong> The control panel always shows count-up behavior (displays time past zero as +00:00:01, etc.). The timer display clients can choose to stop at zero using the <code>?stop-at-zero=true</code> parameter.
                 </div>
             </div>
         </div>
@@ -551,6 +566,24 @@
                             <td>Warning color for last minute (hex)</td>
                             <td>#ff4444</td>
                             <td>#ff0000, #ff4444, #cc0000</td>
+                        </tr>
+                        <tr>
+                            <td><code>count-up-color</code></td>
+                            <td>Color when counting up past zero (hex)</td>
+                            <td>same as warning-color-2</td>
+                            <td>#0088ff, #9933ff, #ffffff</td>
+                        </tr>
+                        <tr>
+                            <td><code>stop-at-zero</code></td>
+                            <td>Stop timer at zero instead of counting up</td>
+                            <td>false</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
+                            <td><code>flash-indefinitely</code></td>
+                            <td>Flash indefinitely at zero (or 10 seconds if false)</td>
+                            <td>true</td>
+                            <td>true, false</td>
                         </tr>
                         <tr>
                             <td><code>show-seconds</code></td>
@@ -623,7 +656,22 @@
 /?font-size=75&transparent-bg=true&font-color=%23ffffff
 
 <!-- Transparent background for overlay use -->
-/?transparent-bg=true&font-color=%23ffffff&no-shadow=true</div>
+/?transparent-bg=true&font-color=%23ffffff&no-shadow=true
+
+<!-- Count up with custom color (default behavior) -->
+/?count-up-color=%230088ff
+
+<!-- Stop at zero (no count up) -->
+/?stop-at-zero=true
+
+<!-- Count up in purple after reaching zero -->
+/?count-up-color=%239933ff&font-color=%2300ff00
+
+<!-- Flash for only 10 seconds then stop -->
+/?flash-indefinitely=false
+
+<!-- Stop at zero and flash indefinitely -->
+/?stop-at-zero=true&flash-indefinitely=true</div>
                 
                 <div class="alert alert-warning">
                     <strong>Note:</strong> URL encode color values (# becomes %23). The URL builder below handles this automatically.
@@ -673,7 +721,15 @@
                             <input type="text" id="warningColor2Text" value="#ff4444" placeholder="#ff4444">
                         </div>
                     </div>
-                    
+
+                    <div class="form-group">
+                        <label>Count-Up Color (After Zero)</label>
+                        <div class="color-input-group">
+                            <input type="color" id="countUpColor" value="#ff4444">
+                            <input type="text" id="countUpColorText" value="#ff4444" placeholder="#ff4444">
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Font Size</label>
                         <div style="display: flex; align-items: center; gap: 10px;">
@@ -712,6 +768,14 @@
                         <div class="checkbox-group">
                             <input type="checkbox" id="noShadow">
                             <label for="noShadow">Disable text shadow/glow</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="stopAtZero">
+                            <label for="stopAtZero">Stop at zero (don't count up)</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="flashIndefinitely" checked>
+                            <label for="flashIndefinitely">Flash indefinitely at zero</label>
                         </div>
                     </div>
                     
@@ -780,16 +844,24 @@
   "paused": false,
   "remaining": 300.5,
   "finished": false,
-  "total": 600
+  "total": 600,
+  "countingUp": true,
+  "isTargetMode": false,
+  "targetTime": null,
+  "serverTime": 1735689600000
 }</div>
                     
                     <h4>Response Fields:</h4>
                     <ul>
                         <li><strong>running:</strong> Whether the timer is currently running</li>
                         <li><strong>paused:</strong> Whether the timer is paused</li>
-                        <li><strong>remaining:</strong> Seconds remaining (decimal precision)</li>
+                        <li><strong>remaining:</strong> Seconds remaining (can be negative if counting up)</li>
                         <li><strong>finished:</strong> Whether the timer has reached zero</li>
                         <li><strong>total:</strong> Total timer duration in seconds</li>
+                        <li><strong>countingUp:</strong> Whether the timer continues after zero</li>
+                        <li><strong>isTargetMode:</strong> Whether the timer is counting to a specific time</li>
+                        <li><strong>targetTime:</strong> Target datetime (only in target mode)</li>
+                        <li><strong>serverTime:</strong> Current server timestamp in milliseconds</li>
                     </ul>
                 </div>
                 
@@ -803,12 +875,22 @@
                     <h4>Example Request:</h4>
                     <div class="code-block"><span class="api-example">curl -X POST http://<span id="hostname2"></span>/api/start -H "Content-Type: application/json" -d '{"hours": 0, "minutes": 5, "seconds": 30}'</span><button class="copy-api-button" onclick="copyApiExample(this)">Copy</button></div>
                     
-                    <h4>Request Body Fields:</h4>
+                    <h4>Request Body Fields (Duration Mode):</h4>
                     <ul>
                         <li><strong>hours:</strong> Hours (0-23)</li>
                         <li><strong>minutes:</strong> Minutes (0-59)</li>
                         <li><strong>seconds:</strong> Seconds (0-59)</li>
+                        <li><strong>countingUp:</strong> (optional) Whether to count up after zero (default: true)</li>
                     </ul>
+
+                    <h4>Request Body Fields (Target Time Mode):</h4>
+                    <ul>
+                        <li><strong>targetTime:</strong> ISO 8601 datetime string (e.g., "2025-12-31T23:59:59.000Z")</li>
+                        <li><strong>countingUp:</strong> (optional) Whether to count up after zero (default: true)</li>
+                    </ul>
+
+                    <h4>Example Target Time Request:</h4>
+                    <div class="code-block"><span class="api-example">curl -X POST http://<span id="hostname6"></span>/api/start -H "Content-Type: application/json" -d '{"targetTime": "2025-12-31T23:59:59.000Z", "countingUp": true}'</span><button class="copy-api-button" onclick="copyApiExample(this)">Copy</button></div>
                     
                     <h4>Success Response:</h4>
                     <div class="code-block">{"success": true}</div>
@@ -977,14 +1059,30 @@ pm2 startup</div>
             const fontColor = encodeURIComponent(document.getElementById('fontColorText').value || '#00ff00');
             const warningColor1 = encodeURIComponent(document.getElementById('warningColor1Text').value || '#ff8800');
             const warningColor2 = encodeURIComponent(document.getElementById('warningColor2Text').value || '#ff4444');
+            const countUpColor = encodeURIComponent(document.getElementById('countUpColorText').value || '#00ff00');
             const showSeconds = document.getElementById('showSeconds').checked ? 'true' : 'false';
             const hideHourAuto = document.getElementById('hideHourAuto').checked ? 'on' : 'off';
             const hideSecondsOverHour = document.getElementById('hideSecondsOverHour').checked ? 'true' : 'false';
             const noShadow = document.getElementById('noShadow').checked ? 'true' : 'false';
+            const stopAtZero = document.getElementById('stopAtZero').checked ? 'true' : 'false';
+            const flashIndefinitely = document.getElementById('flashIndefinitely').checked ? 'true' : 'false';
             const fontSize = document.getElementById('fontSize').value || '100';
             const position = document.getElementById('position').value || 'center';
 
             let url = `/?font-color=${fontColor}&warning-color-1=${warningColor1}&warning-color-2=${warningColor2}&show-seconds=${showSeconds}&hide-hour-auto=${hideHourAuto}&position=${position}`;
+
+            // Only add count-up-color if it's different from font-color
+            if (countUpColor !== fontColor) {
+                url += `&count-up-color=${countUpColor}`;
+            }
+
+            if (stopAtZero === 'true') {
+                url += `&stop-at-zero=${stopAtZero}`;
+            }
+
+            if (flashIndefinitely === 'false') {
+                url += `&flash-indefinitely=${flashIndefinitely}`;
+            }
 
             if (hideSecondsOverHour === 'true') {
                 url += `&hide-seconds-over-hour=${hideSecondsOverHour}`;
@@ -1042,13 +1140,13 @@ pm2 startup</div>
         
         function applyPreset(preset) {
             const presets = {
-                classic: { bg: '#000000', font: '#00ff00', warning1: '#ff8800', warning2: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, fontSize: 100, position: 'center' },
-                matrix: { bg: '#001100', font: '#00ff41', warning1: '#ff8800', warning2: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, fontSize: 100, position: 'center' },
-                modern: { bg: '#2d3748', font: '#63b3ed', warning1: '#ffa500', warning2: '#f56565', seconds: true, hideHour: true, hideSecondsOverHour: true, noShadow: false, transparentBg: false, fontSize: 100, position: 'center' },
-                minimal: { bg: '#ffffff', font: '#2d3748', warning1: '#f6ad55', warning2: '#e53e3e', seconds: false, hideHour: true, hideSecondsOverHour: false, noShadow: true, transparentBg: false, fontSize: 80, position: 'center' },
-                red: { bg: '#000000', font: '#ff4444', warning1: '#ff6600', warning2: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, fontSize: 130, position: 'center' },
-                purple: { bg: '#1a1625', font: '#9f7aea', warning1: '#d69e2e', warning2: '#ed64a6', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: false, transparentBg: false, fontSize: 100, position: 'center' },
-                overlay: { bg: '#000000', font: '#ffffff', warning1: '#ffaa00', warning2: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: true, transparentBg: true, fontSize: 100, position: 'center' }
+                classic: { bg: '#000000', font: '#00ff00', warning1: '#ff8800', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' },
+                matrix: { bg: '#001100', font: '#00ff41', warning1: '#ff8800', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' },
+                modern: { bg: '#2d3748', font: '#63b3ed', warning1: '#ffa500', warning2: '#f56565', countUp: '#f56565', seconds: true, hideHour: true, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' },
+                minimal: { bg: '#ffffff', font: '#2d3748', warning1: '#f6ad55', warning2: '#e53e3e', countUp: '#e53e3e', seconds: false, hideHour: true, hideSecondsOverHour: false, noShadow: true, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 80, position: 'center' },
+                red: { bg: '#000000', font: '#ff4444', warning1: '#ff6600', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 130, position: 'center' },
+                purple: { bg: '#1a1625', font: '#9f7aea', warning1: '#d69e2e', warning2: '#ed64a6', countUp: '#ed64a6', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' },
+                overlay: { bg: '#000000', font: '#ffffff', warning1: '#ffaa00', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: true, transparentBg: true, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' }
             };
 
             const p = presets[preset];
@@ -1060,10 +1158,14 @@ pm2 startup</div>
             document.getElementById('warningColor1Text').value = p.warning1;
             document.getElementById('warningColor2').value = p.warning2;
             document.getElementById('warningColor2Text').value = p.warning2;
+            document.getElementById('countUpColor').value = p.countUp;
+            document.getElementById('countUpColorText').value = p.countUp;
             document.getElementById('showSeconds').checked = p.seconds;
             document.getElementById('hideHourAuto').checked = p.hideHour;
             document.getElementById('hideSecondsOverHour').checked = p.hideSecondsOverHour;
             document.getElementById('noShadow').checked = p.noShadow;
+            document.getElementById('stopAtZero').checked = p.stopAtZero;
+            document.getElementById('flashIndefinitely').checked = p.flashIndefinitely;
             document.getElementById('transparentBg').checked = p.transparentBg;
             document.getElementById('fontSize').value = p.fontSize;
             document.getElementById('fontSizeValue').textContent = p.fontSize + '%';
@@ -1120,11 +1222,25 @@ pm2 startup</div>
             }
             updateUrl();
         });
-        
+
+        document.getElementById('countUpColor').addEventListener('input', (e) => {
+            document.getElementById('countUpColorText').value = e.target.value;
+            updateUrl();
+        });
+
+        document.getElementById('countUpColorText').addEventListener('input', (e) => {
+            if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('countUpColor').value = e.target.value;
+            }
+            updateUrl();
+        });
+
         document.getElementById('showSeconds').addEventListener('change', updateUrl);
         document.getElementById('hideHourAuto').addEventListener('change', updateUrl);
         document.getElementById('hideSecondsOverHour').addEventListener('change', updateUrl);
         document.getElementById('noShadow').addEventListener('change', updateUrl);
+        document.getElementById('stopAtZero').addEventListener('change', updateUrl);
+        document.getElementById('flashIndefinitely').addEventListener('change', updateUrl);
         document.getElementById('transparentBg').addEventListener('change', updateUrl);
         document.getElementById('fontSize').addEventListener('input', function() {
             document.getElementById('fontSizeValue').textContent = this.value + '%';
@@ -1156,7 +1272,7 @@ pm2 startup</div>
         // Set hostname in all API examples
         function setHostnames() {
             const hostname = window.location.host;
-            for (let i = 1; i <= 5; i++) {
+            for (let i = 1; i <= 6; i++) {
                 const element = document.getElementById(`hostname${i}`);
                 if (element) {
                     element.textContent = hostname;

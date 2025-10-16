@@ -78,6 +78,13 @@
             line-height: 1;
             will-change: opacity, transform;
         }
+
+        .timer-display.counting-up {
+            color: <%= count_up_color %> !important;
+            <% if (show_shadow) { %>
+                text-shadow: 0 0 <%= (20 * font_size / 100) %>px <%= count_up_color %>;
+            <% } else { %>text-shadow: none;<% } %>
+        }
         
         .timer-display.warning1 {
             color: <%= warning_color_1 %> !important;
@@ -94,9 +101,38 @@
         }
         
         .timer-display.flashing {
+            -webkit-animation: flash 1s ease-in-out infinite;
+            -moz-animation: flash 1s ease-in-out infinite;
+            -o-animation: flash 1s ease-in-out infinite;
             animation: flash 1s ease-in-out infinite;
+            animation-fill-mode: forwards;
+            -webkit-animation-fill-mode: forwards;
         }
-        
+
+        @-webkit-keyframes flash {
+            0% {
+                opacity: 1;
+                color: <%= warning_color_2 %>;
+                <% if (show_shadow) { %>
+                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px <%= warning_color_2 %>;
+                <% } else { %>text-shadow: none;<% } %>
+            }
+            50% {
+                opacity: 0.2;
+                color: <%= warning_color_2 %>;
+                <% if (show_shadow) { %>
+                    text-shadow: 0 0 <%= (10 * font_size / 100) %>px <%= warning_color_2 %>;
+                <% } else { %>text-shadow: none;<% } %>
+            }
+            100% {
+                opacity: 1;
+                color: <%= warning_color_2 %>;
+                <% if (show_shadow) { %>
+                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px <%= warning_color_2 %>;
+                <% } else { %>text-shadow: none;<% } %>
+            }
+        }
+
         @keyframes flash {
             0% {
                 opacity: 1;
@@ -125,12 +161,22 @@
             display: inline-block;
             opacity: 1;
             transition: opacity 0.3s ease;
+            -webkit-transition: opacity 0.3s ease;
+            -moz-transition: opacity 0.3s ease;
         }
-        
+
         .separator.blink {
+            -webkit-animation: blink 1s infinite;
+            -moz-animation: blink 1s infinite;
+            -o-animation: blink 1s infinite;
             animation: blink 1s infinite;
         }
-        
+
+        @-webkit-keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
         @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0.3; }
@@ -231,6 +277,8 @@
         const showSeconds = <%- JSON.stringify(show_seconds) %>;
         const hideHourAuto = <%- JSON.stringify(hide_hour_auto) %>;
         const hideSecondsOverHour = <%- JSON.stringify(hide_seconds_over_hour) %>;
+        const stopAtZero = <%- JSON.stringify(stop_at_zero) %>;
+        const flashIndefinitely = <%- JSON.stringify(flash_indefinitely) %>;
         
         // Timer state for offline operation
         let timerState = {
@@ -241,7 +289,10 @@
             localStartTime: null,
             localRemaining: 0,
             lastServerSync: null,
-            pendingControlAction: null // Track pending control actions for responsiveness
+            pendingControlAction: null, // Track pending control actions for responsiveness
+            countingUp: !stopAtZero,
+            isTargetMode: false,
+            targetTime: null
         };
         
         let isOnline = true;
@@ -251,28 +302,31 @@
         let reconnectNotificationTimeout = null;
         
         function formatTime(totalSeconds) {
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = Math.floor(totalSeconds % 60);
+            const isNegative = totalSeconds < 0;
+            const absSeconds = Math.abs(totalSeconds);
+            const hours = Math.floor(absSeconds / 3600);
+            const minutes = Math.floor((absSeconds % 3600) / 60);
+            const seconds = Math.floor(absSeconds % 60);
 
             let timeString = '';
+            const prefix = isNegative ? '+' : '';
 
             // When both hideSecondsOverHour and hideHourAuto are enabled,
             // we need special logic to prevent character count jumping
             if (hideSecondsOverHour && hideHourAuto) {
                 // Special mode: maintain consistent character count
-                if (totalSeconds > 3600) {
+                if (absSeconds > 3600) {
                     // Above 1 hour: show H:MM format (no seconds)
                     const shouldShowSeconds = false;
                     const shouldShowHours = true;
 
-                    timeString = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+                    timeString = prefix + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
                 } else {
                     // At or below 1 hour: show MM:SS format (no hours)
                     const shouldShowSeconds = showSeconds;
                     const shouldShowHours = false;
 
-                    timeString = String(minutes).padStart(2, '0');
+                    timeString = prefix + String(minutes).padStart(2, '0');
                     if (shouldShowSeconds) {
                         timeString += ':' + String(seconds).padStart(2, '0');
                     }
@@ -282,7 +336,7 @@
             }
 
             // Normal logic for other cases
-            const shouldShowSeconds = showSeconds && !(hideSecondsOverHour && totalSeconds > 3600);
+            const shouldShowSeconds = showSeconds && !(hideSecondsOverHour && absSeconds > 3600);
             let shouldShowHours;
 
             if (!hideHourAuto) {
@@ -292,7 +346,9 @@
             }
 
             if (shouldShowHours) {
-                timeString = String(hours).padStart(2, '0') + ':';
+                timeString = prefix + String(hours).padStart(2, '0') + ':';
+            } else {
+                timeString = prefix;
             }
 
             timeString += String(minutes).padStart(2, '0');
@@ -314,17 +370,38 @@
         }
         
         function updateLocalTimer() {
-            if (timerState.running && timerState.localStartTime) {
-                const elapsed = (Date.now() - timerState.localStartTime) / 1000;
-                const newRemaining = timerState.remaining - elapsed;
+            if (timerState.running) {
+                let newRemaining;
+
+                if (timerState.isTargetMode && timerState.targetTime) {
+                    // Calculate remaining time to target directly
+                    const now = Date.now();
+                    const target = new Date(timerState.targetTime).getTime();
+                    newRemaining = (target - now) / 1000;
+                } else if (timerState.localStartTime) {
+                    // Duration mode - calculate from elapsed time
+                    const elapsed = (Date.now() - timerState.localStartTime) / 1000;
+                    newRemaining = timerState.remaining - elapsed;
+                }
 
                 // Keep fractional seconds for smooth display
-                if (newRemaining >= 0) {
+                if (newRemaining >= 0 || timerState.countingUp) {
                     timerState.localRemaining = newRemaining;
+
+                    // Mark as finished when countdown reaches zero (but keep running if counting up)
+                    if (newRemaining <= 0 && !timerState.finished) {
+                        timerState.finished = true;
+                        if (!timerState.countingUp) {
+                            timerState.running = false;
+                            startFlashing();
+                        } else {
+                            startFlashing(); // Flash when crossing zero
+                        }
+                    }
                 } else {
                     timerState.localRemaining = 0;
-                    // Check if timer finished locally
-                    if (!timerState.finished) {
+                    // Check if timer finished locally (only if not counting up)
+                    if (!timerState.finished && !timerState.countingUp) {
                         timerState.finished = true;
                         timerState.running = false;
                         startFlashing();
@@ -338,10 +415,14 @@
 
             // Always use local calculated time for smooth countdown
             let displayTime = timerState.running ? timerState.localRemaining : timerState.remaining;
-            displayTime = Math.max(0, displayTime);
 
-            // Force display to 00:00:00 when timer is finished
-            if (timerState.finished || displayTime <= 0) {
+            // When counting up, display negative values; when not, clamp to 0
+            if (!timerState.countingUp) {
+                displayTime = Math.max(0, displayTime);
+            }
+
+            // Force display to 00:00:00 when timer is finished and NOT counting up
+            if ((timerState.finished || displayTime <= 0) && !timerState.countingUp) {
                 displayTime = 0;
             }
 
@@ -349,8 +430,8 @@
             const displayTimeFormatted = formatTime(Math.floor(displayTime));
 
             // Smooth interpolation within seconds using CSS transforms
-            const fractionalPart = displayTime - Math.floor(displayTime);
-            const smoothness = 1 - fractionalPart; // Creates smooth transition effect
+            const absFractionalPart = Math.abs(displayTime) - Math.floor(Math.abs(displayTime));
+            const smoothness = 1 - absFractionalPart; // Creates smooth transition effect
 
             // Only update text if the displayed second has changed to avoid flicker
             if (timerDisplay.textContent !== displayTimeFormatted) {
@@ -358,15 +439,20 @@
             }
 
             // Apply subtle visual feedback for smooth countdown feeling
-            if (timerState.running && !timerState.finished) {
+            if (timerState.running && (!timerState.finished || timerState.countingUp)) {
                 const opacity = 0.9 + (smoothness * 0.1); // Subtle opacity pulse
                 timerDisplay.style.opacity = opacity;
             } else {
                 timerDisplay.style.opacity = '1';
             }
-            
+
             // Handle color changes and flashing
-            if (timerState.finished || displayTime <= 0) {
+            if (displayTime < 0) {
+                // Counting up after zero - remove warnings, use count-up color
+                stopFlashing();
+                timerDisplay.classList.remove('warning1', 'warning2');
+                timerDisplay.classList.add('counting-up');
+            } else if ((timerState.finished || displayTime <= 0) && !timerState.countingUp) {
                 if (!isFlashing) {
                     // Ensure we're in warning2 state before flashing
                     timerDisplay.classList.remove('warning1');
@@ -376,21 +462,21 @@
             } else if (displayTime <= 60 && displayTime > 0) {
                 // Final warning state (1 minute) - intense warning color but no flashing
                 stopFlashing();
-                timerDisplay.classList.remove('warning1');
+                timerDisplay.classList.remove('warning1', 'counting-up');
                 timerDisplay.classList.add('warning2');
             } else if (displayTime <= 300 && displayTime > 0) {
                 // First warning state (5 minutes) - warning color but no flashing
                 stopFlashing();
-                timerDisplay.classList.remove('warning2');
+                timerDisplay.classList.remove('warning2', 'counting-up');
                 timerDisplay.classList.add('warning1');
             } else {
                 // Normal state - explicitly remove all warning classes
                 stopFlashing();
-                timerDisplay.classList.remove('warning1', 'warning2');
+                timerDisplay.classList.remove('warning1', 'warning2', 'counting-up');
             }
-            
-            // Add blinking separators when running (but not when finished)
-            if (timerState.running && !timerState.finished) {
+
+            // Add blinking separators when running
+            if (timerState.running) {
                 const separators = timerDisplay.textContent.match(/:/g);
                 if (separators) {
                     let displayText = timerDisplay.textContent;
@@ -428,6 +514,10 @@
             timerState.running = serverData.running;
             timerState.paused = serverData.paused;
             timerState.finished = serverData.finished;
+            // Don't sync countingUp from server - use client's URL parameter preference
+            // timerState.countingUp is set from stopAtZero URL parameter and should not change
+            timerState.isTargetMode = serverData.isTargetMode !== undefined ? serverData.isTargetMode : timerState.isTargetMode;
+            timerState.targetTime = serverData.targetTime !== undefined ? serverData.targetTime : timerState.targetTime;
             timerState.lastServerSync = clientTime;
             timerState.pendingControlAction = null; // Clear pending action
 
@@ -510,10 +600,13 @@
             timerDisplay.classList.remove('warning1');
             timerDisplay.classList.add('warning2');
 
-            // Stop flashing after 10 seconds, synchronized with animation cycle
-            flashingTimeout = setTimeout(() => {
-                stopFlashing();
-            }, 10000); // 10 seconds = 10 animation cycles (1s each)
+            if (!flashIndefinitely) {
+                // Stop flashing after 10 seconds if flash-indefinitely is false
+                flashingTimeout = setTimeout(() => {
+                    stopFlashing();
+                }, 10000); // 10 seconds = 10 animation cycles (1s each)
+            }
+            // Otherwise flash indefinitely - will flash until timer is reset or restarted
         }
 
         function stopFlashing() {
@@ -521,27 +614,52 @@
 
             isFlashing = false;
 
-            // Wait for current animation cycle to complete before removing class
-            // This ensures smooth transition by ending at opacity: 1
-            const removeFlashing = () => {
-                timerDisplay.classList.remove('flashing');
-            };
-
-            // Use animationiteration event to remove class at end of current cycle
-            const handleAnimationEnd = () => {
-                removeFlashing();
-                timerDisplay.removeEventListener('animationiteration', handleAnimationEnd);
-            };
-
-            timerDisplay.addEventListener('animationiteration', handleAnimationEnd, { once: true });
-
-            // Fallback: remove after max 1 animation cycle if event doesn't fire
-            setTimeout(removeFlashing, 1000);
-
+            // Clear the auto-stop timeout if it exists
             if (flashingTimeout) {
                 clearTimeout(flashingTimeout);
                 flashingTimeout = null;
             }
+
+            // Calculate how far into current animation cycle we are
+            const style = window.getComputedStyle(timerDisplay);
+            const animationDuration = parseFloat(style.animationDuration || style.webkitAnimationDuration || '1') * 1000;
+
+            // Use a simpler, more compatible approach: just wait for next cycle
+            // This works across all browsers without relying on animation events
+            const removeFlashing = () => {
+                timerDisplay.classList.remove('flashing');
+                // Force a reflow to ensure the animation stops cleanly
+                void timerDisplay.offsetWidth;
+                // Reset opacity to ensure clean state
+                timerDisplay.style.opacity = '';
+            };
+
+            // Cross-browser animation event listener
+            let animationEventFired = false;
+            const handleAnimationIteration = () => {
+                if (!animationEventFired) {
+                    animationEventFired = true;
+                    removeFlashing();
+                    // Remove all possible event listeners
+                    timerDisplay.removeEventListener('animationiteration', handleAnimationIteration);
+                    timerDisplay.removeEventListener('webkitAnimationIteration', handleAnimationIteration);
+                    timerDisplay.removeEventListener('oanimationiteration', handleAnimationIteration);
+                    timerDisplay.removeEventListener('MSAnimationIteration', handleAnimationIteration);
+                }
+            };
+
+            // Add listeners for all browser variants
+            timerDisplay.addEventListener('animationiteration', handleAnimationIteration, { once: true });
+            timerDisplay.addEventListener('webkitAnimationIteration', handleAnimationIteration, { once: true });
+            timerDisplay.addEventListener('oanimationiteration', handleAnimationIteration, { once: true });
+            timerDisplay.addEventListener('MSAnimationIteration', handleAnimationIteration, { once: true });
+
+            // Reliable fallback: remove after max 1 animation cycle + small buffer
+            setTimeout(() => {
+                if (!animationEventFired) {
+                    removeFlashing();
+                }
+            }, animationDuration + 50);
         }
         
         // Update from server every .5 second

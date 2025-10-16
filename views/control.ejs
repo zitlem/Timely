@@ -185,7 +185,38 @@
         .preset-btn:active {
             transform: translateY(0);
         }
-        
+
+        .mode-selector {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 10px 24px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #ffffff;
+            color: var(--dark-color);
+            font-size: clamp(0.85rem, 3vw, 0.95rem);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .mode-btn:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-color: var(--primary-color);
+        }
+
         .input-section {
             margin-bottom: clamp(20px, 5vw, 30px);
         }
@@ -548,7 +579,12 @@
             </div>
         </div>
         
-        <div class="input-section">
+        <div class="mode-selector" style="margin-bottom: 20px; text-align: center;">
+            <button class="mode-btn active" id="durationModeBtn" onclick="setMode('duration')">Duration</button>
+            <button class="mode-btn" id="targetModeBtn" onclick="setMode('target')">Target Time</button>
+        </div>
+
+        <div class="input-section" id="durationSection">
             <label class="input-label">Custom Timer Duration</label>
             <div class="input-group">
                 <div class="input-field">
@@ -562,6 +598,16 @@
                 <div class="input-field">
                     <label for="seconds">Seconds</label>
                     <input type="number" id="seconds" min="0" max="59" value="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="input-section" id="targetSection" style="display: none;">
+            <label class="input-label">Countdown to Specific Time</label>
+            <div class="input-group" style="grid-template-columns: 1fr;">
+                <div class="input-field">
+                    <label for="targetDateTime">Date & Time</label>
+                    <input type="datetime-local" id="targetDateTime">
                 </div>
             </div>
         </div>
@@ -605,15 +651,22 @@
             paused: false,
             remaining: 0,
             localStartTime: null,
-            localRemaining: 0
+            localRemaining: 0,
+            countingUp: false,
+            isTargetMode: false
         };
 
-        function formatTime(totalSeconds) {
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = Math.floor(totalSeconds % 60);
+        let currentMode = 'duration'; // 'duration' or 'target'
 
-            return String(hours).padStart(2, '0') + ':' +
+        function formatTime(totalSeconds) {
+            const isNegative = totalSeconds < 0;
+            const absSeconds = Math.abs(totalSeconds);
+            const hours = Math.floor(absSeconds / 3600);
+            const minutes = Math.floor((absSeconds % 3600) / 60);
+            const seconds = Math.floor(absSeconds % 60);
+
+            const prefix = isNegative ? '+' : '';
+            return prefix + String(hours).padStart(2, '0') + ':' +
                    String(minutes).padStart(2, '0') + ':' +
                    String(seconds).padStart(2, '0');
         }
@@ -621,11 +674,16 @@
 function updateLocalTimer() {
             if (timerState.running && timerState.localStartTime) {
                 const elapsed = (Date.now() - timerState.localStartTime) / 1000;
-                const newRemaining = Math.max(0, timerState.remaining - elapsed);
-                timerState.localRemaining = newRemaining;
-                
-                if (newRemaining <= 0) {
-                    timerState.running = false;
+                const newRemaining = timerState.remaining - elapsed;
+
+                // Allow negative values when counting up
+                if (timerState.countingUp || newRemaining >= 0) {
+                    timerState.localRemaining = newRemaining;
+                } else {
+                    timerState.localRemaining = 0;
+                    if (!timerState.countingUp) {
+                        timerState.running = false;
+                    }
                 }
             }
         }
@@ -635,7 +693,11 @@ function updateLocalTimer() {
 
             // Use local calculated time for smooth countdown
             let displayTime = timerState.running ? timerState.localRemaining : timerState.remaining;
-            displayTime = Math.max(0, displayTime);
+
+            // When counting up, allow negative values; otherwise clamp to 0
+            if (!timerState.countingUp) {
+                displayTime = Math.max(0, displayTime);
+            }
 
             // Use Math.floor to match timer.ejs
             statusTime.textContent = formatTime(Math.floor(displayTime));
@@ -651,11 +713,48 @@ function updateLocalTimer() {
             }, 3000);
         }
         
+        function setMode(mode) {
+            currentMode = mode;
+            const durationSection = document.getElementById('durationSection');
+            const targetSection = document.getElementById('targetSection');
+            const durationModeBtn = document.getElementById('durationModeBtn');
+            const targetModeBtn = document.getElementById('targetModeBtn');
+
+            if (mode === 'duration') {
+                durationSection.style.display = 'block';
+                targetSection.style.display = 'none';
+                durationModeBtn.classList.add('active');
+                targetModeBtn.classList.remove('active');
+            } else {
+                durationSection.style.display = 'none';
+                targetSection.style.display = 'block';
+                durationModeBtn.classList.remove('active');
+                targetModeBtn.classList.add('active');
+
+                // Set default target time to 15 minutes from now if empty
+                const targetInput = document.getElementById('targetDateTime');
+                if (!targetInput.value) {
+                    const now = new Date();
+                    now.setMinutes(now.getMinutes() + 15);
+                    // Format to datetime-local format
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    targetInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                }
+            }
+        }
+
         function setPreset(hours, minutes, seconds) {
+            // Switch to duration mode when using presets
+            setMode('duration');
+
             document.getElementById('hours').value = hours;
             document.getElementById('minutes').value = minutes;
             document.getElementById('seconds').value = seconds;
-            
+
             // Visual feedback
             const presetText = hours > 0 ? `${hours}h` : `${minutes}m`;
             showNotification(`Set to ${presetText}`, 'success');
@@ -686,6 +785,8 @@ function updateLocalTimer() {
                     // Update timer state from server
                     timerState.running = data.running;
                     timerState.paused = data.paused;
+                    timerState.countingUp = data.countingUp !== undefined ? data.countingUp : timerState.countingUp;
+                    timerState.isTargetMode = data.isTargetMode !== undefined ? data.isTargetMode : timerState.isTargetMode;
 
 // Sync logic
                     if (!oldRunning && data.running) {
@@ -728,25 +829,64 @@ function updateLocalTimer() {
         }
         
         function startTimer() {
-            const hours = parseInt(document.getElementById('hours').value) || 0;
-            const minutes = parseInt(document.getElementById('minutes').value) || 0;
-            const seconds = parseInt(document.getElementById('seconds').value) || 0;
-            
-            if (hours === 0 && minutes === 0 && seconds === 0) {
-                showNotification('Please set a time greater than 0', 'error');
-                return;
+            let requestBody = {};
+            let notificationMessage = '';
+
+            // Control panel always counts up - this is just for control panel behavior
+            // The actual timer display uses the ?stop-at-zero URL parameter
+            const countingUp = true;
+
+            if (currentMode === 'duration') {
+                const hours = parseInt(document.getElementById('hours').value) || 0;
+                const minutes = parseInt(document.getElementById('minutes').value) || 0;
+                const seconds = parseInt(document.getElementById('seconds').value) || 0;
+
+                if (hours === 0 && minutes === 0 && seconds === 0) {
+                    showNotification('Please set a time greater than 0', 'error');
+                    return;
+                }
+
+                requestBody = {
+                    hours: hours,
+                    minutes: minutes,
+                    seconds: seconds,
+                    countingUp: countingUp
+                };
+
+                const totalTime = hours * 3600 + minutes * 60 + seconds;
+                const timeText = formatTime(totalTime);
+                notificationMessage = `Timer started: ${timeText}`;
+            } else {
+                // Target time mode
+                const targetDateTime = document.getElementById('targetDateTime').value;
+
+                if (!targetDateTime) {
+                    showNotification('Please select a target date and time', 'error');
+                    return;
+                }
+
+                const targetTime = new Date(targetDateTime);
+                const now = new Date();
+
+                if (targetTime <= now) {
+                    showNotification('Target time must be in the future', 'error');
+                    return;
+                }
+
+                requestBody = {
+                    targetTime: targetTime.toISOString(),
+                    countingUp: countingUp
+                };
+
+                notificationMessage = `Timer started to ${targetTime.toLocaleString()}`;
             }
-            
+
             fetch('/api/start', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    hours: hours,
-                    minutes: minutes,
-                    seconds: seconds
-                })
+                body: JSON.stringify(requestBody)
             })
             .then(response => {
                 if (response.status === 403) {
@@ -756,9 +896,7 @@ function updateLocalTimer() {
             })
             .then(data => {
                 if (data.success) {
-                    const totalTime = hours * 3600 + minutes * 60 + seconds;
-                    const timeText = formatTime(totalTime);
-                    showNotification(`Timer started: ${timeText}`);
+                    showNotification(notificationMessage);
                 }
             })
             .catch(error => {
