@@ -41,24 +41,43 @@ class CountdownTimer {
         this.startTime = null;
         this.pauseTime = null;
         this.finished = false;
+        this.countingUp = false;
+        this.targetTime = null; // For countdown to specific time
+        this.isTargetMode = false;
     }
     
-    start(hours = 0, minutes = 0, seconds = 0) {
+    start(hours = 0, minutes = 0, seconds = 0, targetTime = null, countingUp = true) {
         if (!this.running && !this.paused) {
             // Starting fresh timer
-            this.totalSeconds = hours * 3600 + minutes * 60 + seconds;
-            this.remainingSeconds = this.totalSeconds;
+            this.countingUp = countingUp; // Set countingUp mode when starting
+
+            if (targetTime) {
+                // Countdown to specific time mode
+                this.isTargetMode = true;
+                this.targetTime = targetTime;
+                const now = Date.now();
+                const target = new Date(targetTime).getTime();
+                this.remainingSeconds = Math.max(0, (target - now) / 1000);
+                this.totalSeconds = this.remainingSeconds;
+                console.log(`Timer started to target time: ${new Date(targetTime).toLocaleString()}, countingUp: ${countingUp}`);
+            } else {
+                // Duration mode
+                this.isTargetMode = false;
+                this.targetTime = null;
+                this.totalSeconds = hours * 3600 + minutes * 60 + seconds;
+                this.remainingSeconds = this.totalSeconds;
+                console.log(`Timer started: ${this.remainingSeconds} seconds remaining, countingUp: ${countingUp}`);
+            }
             this.finished = false;
         } else if (this.paused) {
             // Resuming from pause
             this.finished = false;
         }
-        
-        if (this.remainingSeconds > 0) {
+
+        if (this.remainingSeconds > 0 || this.isTargetMode) {
             this.running = true;
             this.paused = false;
             this.startTime = Date.now();
-            console.log(`Timer started: ${this.remainingSeconds} seconds remaining`);
         }
     }
     
@@ -82,6 +101,9 @@ class CountdownTimer {
         this.startTime = null;
         this.pauseTime = null;
         this.finished = false;
+        this.countingUp = false;
+        this.targetTime = null;
+        this.isTargetMode = false;
         console.log('Timer reset');
     }
     
@@ -89,34 +111,52 @@ class CountdownTimer {
         const currentTime = Date.now();
 
         if (this.running && this.startTime) {
-            const elapsed = (currentTime - this.startTime) / 1000;
-            let remaining = this.remainingSeconds - elapsed;
+            let remaining;
 
-            // Check if timer has finished
-            if (remaining <= 0) {
+            if (this.isTargetMode && this.targetTime) {
+                // Calculate remaining time to target
+                const target = new Date(this.targetTime).getTime();
+                remaining = (target - currentTime) / 1000;
+            } else {
+                // Regular duration mode
+                const elapsed = (currentTime - this.startTime) / 1000;
+                remaining = this.remainingSeconds - elapsed;
+            }
+
+            // Check if timer has finished countdown
+            if (remaining <= 0 && !this.countingUp) {
                 remaining = 0;
                 if (!this.finished) {
                     this.finished = true;
                     this.running = false;
                     console.log('Timer finished!');
                 }
+            } else if (remaining < 0 && this.countingUp) {
+                // Continue counting up (negative remaining means counting up)
+                this.finished = true; // Mark as finished to indicate countdown is done
             }
 
             return {
                 running: this.running,
                 paused: this.paused,
-                remaining: Math.max(0, remaining), // Ensure no negative values
+                remaining: this.countingUp ? remaining : Math.max(0, remaining),
                 finished: this.finished,
                 total: this.totalSeconds,
+                countingUp: this.countingUp,
+                isTargetMode: this.isTargetMode,
+                targetTime: this.targetTime,
                 serverTime: currentTime // Include server timestamp for better sync
             };
         } else {
             return {
                 running: this.running,
                 paused: this.paused,
-                remaining: Math.max(0, this.remainingSeconds),
+                remaining: this.countingUp ? this.remainingSeconds : Math.max(0, this.remainingSeconds),
                 finished: this.finished,
                 total: this.totalSeconds,
+                countingUp: this.countingUp,
+                isTargetMode: this.isTargetMode,
+                targetTime: this.targetTime,
                 serverTime: currentTime
             };
         }
@@ -162,30 +202,39 @@ app.get('/', (req, res) => {
     const fontColor = req.query['font-color'] || '#00ff00';
     const warningColor1 = req.query['warning-color-1'] || '#ff8800';
     const warningColor2 = req.query['warning-color-2'] || '#ff4444';
+    const countUpColor = req.query['count-up-color'] || warningColor2; // Default to warning-color-2
     const showSeconds = req.query['show-seconds'] !== 'false';
     const hideHourAuto = req.query['hide-hour-auto'] === 'on';
     const hideSecondsOverHour = req.query['hide-seconds-over-hour'] === 'true';
     const showShadow = req.query['no-shadow'] !== 'true';
     const fontSize = parseInt(req.query['font-size']) || 100;
+    const stopAtZero = req.query['stop-at-zero'] === 'true';
+    const flashIndefinitely = req.query['flash-indefinitely'] !== 'false'; // Default to true
     let position = (req.query.position || 'center').toLowerCase();
-    
+
     // Validate position parameter
     const validPositions = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center'];
     if (!validPositions.includes(position)) {
         position = 'center';
     }
-    
+
+    // Don't set timer.countingUp globally - it will be set when timer starts
+    // Just pass the stopAtZero flag to the client
+
     res.render('timer', {
         background,
         transparent_bg: transparentBg,
         font_color: fontColor,
         warning_color_1: warningColor1,
         warning_color_2: warningColor2,
+        count_up_color: countUpColor,
         show_seconds: showSeconds,
         hide_hour_auto: hideHourAuto,
         hide_seconds_over_hour: hideSecondsOverHour,
         show_shadow: showShadow,
         font_size: fontSize,
+        stop_at_zero: stopAtZero,
+        flash_indefinitely: flashIndefinitely,
         position
     });
 });
@@ -205,10 +254,17 @@ app.post('/api/start', (req, res) => {
         console.log(`Access denied for IP: ${clientIP}`);
         return res.status(403).json({ error: 'Access denied' });
     }
-    
-    const { hours = 0, minutes = 0, seconds = 0 } = req.body;
-    console.log(`Start request from ${clientIP}: ${hours}h ${minutes}m ${seconds}s`);
-    timer.start(parseInt(hours), parseInt(minutes), parseInt(seconds));
+
+    const { hours = 0, minutes = 0, seconds = 0, targetTime = null, countingUp = true } = req.body;
+
+    if (targetTime) {
+        console.log(`Start request from ${clientIP} to target time: ${targetTime}`);
+        timer.start(0, 0, 0, targetTime, countingUp);
+    } else {
+        console.log(`Start request from ${clientIP}: ${hours}h ${minutes}m ${seconds}s`);
+        timer.start(parseInt(hours), parseInt(minutes), parseInt(seconds), null, countingUp);
+    }
+
     res.json({ success: true });
 });
 
