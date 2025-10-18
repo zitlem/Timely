@@ -210,6 +210,11 @@ app.get('/', (req, res) => {
     const fontSize = parseInt(req.query['font-size']) || 100;
     const stopAtZero = req.query['stop-at-zero'] === 'true';
     const flashIndefinitely = req.query['flash-indefinitely'] !== 'false'; // Default to true
+    const showClock = req.query['show-clock'] === 'true'; // Default to false
+    const showOnlyClock = req.query['show-only-clock'] === 'true'; // Default to false
+    const clock24Hour = req.query['clock-24-hour'] !== 'false'; // Default to true (24-hour)
+    const clockShowSeconds = req.query['clock-show-seconds'] !== 'false'; // Default to true
+    const clockShowAmPm = req.query['clock-show-ampm'] !== 'false'; // Default to true
     let position = (req.query.position || 'center').toLowerCase();
 
     // Validate position parameter
@@ -235,6 +240,11 @@ app.get('/', (req, res) => {
         font_size: fontSize,
         stop_at_zero: stopAtZero,
         flash_indefinitely: flashIndefinitely,
+        show_clock: showClock,
+        show_only_clock: showOnlyClock,
+        clock_24_hour: clock24Hour,
+        clock_show_seconds: clockShowSeconds,
+        clock_show_ampm: clockShowAmPm,
         position
     });
 });

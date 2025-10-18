@@ -586,8 +586,38 @@
                             <td>true, false</td>
                         </tr>
                         <tr>
+                            <td><code>show-clock</code></td>
+                            <td>Show current time when timer is reset</td>
+                            <td>false</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
+                            <td><code>show-only-clock</code></td>
+                            <td>Show only clock (ignore all timer events)</td>
+                            <td>false</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
+                            <td><code>clock-24-hour</code></td>
+                            <td>Use 24-hour format for clock</td>
+                            <td>true</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
+                            <td><code>clock-show-seconds</code></td>
+                            <td>Show seconds in clock display</td>
+                            <td>true</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
+                            <td><code>clock-show-ampm</code></td>
+                            <td>Show AM/PM in 12-hour clock</td>
+                            <td>true</td>
+                            <td>true, false</td>
+                        </tr>
+                        <tr>
                             <td><code>show-seconds</code></td>
-                            <td>Display seconds</td>
+                            <td>Display seconds (timer only)</td>
                             <td>true</td>
                             <td>true, false</td>
                         </tr>
@@ -671,7 +701,28 @@
 /?flash-indefinitely=false
 
 <!-- Stop at zero and flash indefinitely -->
-/?stop-at-zero=true&flash-indefinitely=true</div>
+/?stop-at-zero=true&flash-indefinitely=true
+
+<!-- Show current time when timer is reset -->
+/?show-clock=true
+
+<!-- Show 00:00:00 when timer is reset (default) -->
+/?show-clock=false
+
+<!-- Show only clock (no timer functionality) -->
+/?show-only-clock=true
+
+<!-- Clock-only mode with custom colors -->
+/?show-only-clock=true&font-color=%23ffffff&background=%23000000
+
+<!-- 12-hour clock without seconds -->
+/?show-only-clock=true&clock-24-hour=false&clock-show-seconds=false
+
+<!-- 12-hour clock without AM/PM indicator -->
+/?show-only-clock=true&clock-24-hour=false&clock-show-ampm=false
+
+<!-- 24-hour clock (default) -->
+/?show-only-clock=true&clock-24-hour=true&clock-show-seconds=true</div>
                 
                 <div class="alert alert-warning">
                     <strong>Note:</strong> URL encode color values (# becomes %23). The URL builder below handles this automatically.
@@ -777,6 +828,26 @@
                             <input type="checkbox" id="flashIndefinitely" checked>
                             <label for="flashIndefinitely">Flash indefinitely at zero</label>
                         </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="showClock">
+                            <label for="showClock">Show current time when reset</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="showOnlyClock">
+                            <label for="showOnlyClock">Show only clock (ignore timer)</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="clock24Hour" checked>
+                            <label for="clock24Hour">24-hour clock format</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="clockShowSeconds" checked>
+                            <label for="clockShowSeconds">Show seconds in clock</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="clockShowAmPm" checked>
+                            <label for="clockShowAmPm">Show AM/PM in 12-hour clock</label>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -785,7 +856,14 @@
                             <span id="generatedUrl">/?background=%23000000&font-color=%2300ff00&warning-color-1=%23ff8800&warning-color-2=%23ff4444&show-seconds=true&hide-hour-auto=off&position=center</span>
                             <button class="copy-button" onclick="copyUrl()">Copy</button>
                         </div>
-                        <button class="preview-button" onclick="previewTimer()">Preview Timer</button>
+                        <button class="preview-button" onclick="previewTimer()">Open in New Tab</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Live Preview</label>
+                        <div style="width: 100%; height: 300px; border: 2px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #000;">
+                            <iframe id="timerPreview" src="/" style="width: 100%; height: 100%; border: none;"></iframe>
+                        </div>
                     </div>
                 </div>
                 
@@ -1066,6 +1144,10 @@ pm2 startup</div>
             const noShadow = document.getElementById('noShadow').checked ? 'true' : 'false';
             const stopAtZero = document.getElementById('stopAtZero').checked ? 'true' : 'false';
             const flashIndefinitely = document.getElementById('flashIndefinitely').checked ? 'true' : 'false';
+            const showClock = document.getElementById('showClock').checked ? 'true' : 'false';
+            const showOnlyClock = document.getElementById('showOnlyClock').checked ? 'true' : 'false';
+            const clock24Hour = document.getElementById('clock24Hour').checked ? 'true' : 'false';
+            const clockShowSeconds = document.getElementById('clockShowSeconds').checked ? 'true' : 'false';
             const fontSize = document.getElementById('fontSize').value || '100';
             const position = document.getElementById('position').value || 'center';
 
@@ -1082,6 +1164,27 @@ pm2 startup</div>
 
             if (flashIndefinitely === 'false') {
                 url += `&flash-indefinitely=${flashIndefinitely}`;
+            }
+
+            if (showClock === 'true') {
+                url += `&show-clock=${showClock}`;
+            }
+
+            if (showOnlyClock === 'true') {
+                url += `&show-only-clock=${showOnlyClock}`;
+            }
+
+            if (clock24Hour === 'false') {
+                url += `&clock-24-hour=${clock24Hour}`;
+            }
+
+            if (clockShowSeconds === 'false') {
+                url += `&clock-show-seconds=${clockShowSeconds}`;
+            }
+
+            const clockShowAmPm = document.getElementById('clockShowAmPm').checked ? 'true' : 'false';
+            if (clockShowAmPm === 'false') {
+                url += `&clock-show-ampm=${clockShowAmPm}`;
             }
 
             if (hideSecondsOverHour === 'true') {
@@ -1102,6 +1205,12 @@ pm2 startup</div>
                 url += `&no-shadow=${noShadow}`;
             }
             document.getElementById('generatedUrl').textContent = url;
+
+            // Update live preview iframe
+            const previewIframe = document.getElementById('timerPreview');
+            if (previewIframe) {
+                previewIframe.src = url;
+            }
         }
         
         function copyUrl() {
@@ -1140,13 +1249,13 @@ pm2 startup</div>
         
         function applyPreset(preset) {
             const presets = {
-                classic: { bg: '#000000', font: '#00ff00', warning1: '#ff8800', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' },
-                matrix: { bg: '#001100', font: '#00ff41', warning1: '#ff8800', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' },
-                modern: { bg: '#2d3748', font: '#63b3ed', warning1: '#ffa500', warning2: '#f56565', countUp: '#f56565', seconds: true, hideHour: true, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' },
-                minimal: { bg: '#ffffff', font: '#2d3748', warning1: '#f6ad55', warning2: '#e53e3e', countUp: '#e53e3e', seconds: false, hideHour: true, hideSecondsOverHour: false, noShadow: true, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 80, position: 'center' },
-                red: { bg: '#000000', font: '#ff4444', warning1: '#ff6600', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 130, position: 'center' },
-                purple: { bg: '#1a1625', font: '#9f7aea', warning1: '#d69e2e', warning2: '#ed64a6', countUp: '#ed64a6', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' },
-                overlay: { bg: '#000000', font: '#ffffff', warning1: '#ffaa00', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: true, transparentBg: true, stopAtZero: false, flashIndefinitely: true, fontSize: 100, position: 'center' }
+                classic: { bg: '#000000', font: '#00ff00', warning1: '#ff8800', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' },
+                matrix: { bg: '#001100', font: '#00ff41', warning1: '#ff8800', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' },
+                modern: { bg: '#2d3748', font: '#63b3ed', warning1: '#ffa500', warning2: '#f56565', countUp: '#f56565', seconds: true, hideHour: true, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' },
+                minimal: { bg: '#ffffff', font: '#2d3748', warning1: '#f6ad55', warning2: '#e53e3e', countUp: '#e53e3e', seconds: false, hideHour: true, hideSecondsOverHour: false, noShadow: true, transparentBg: false, stopAtZero: false, flashIndefinitely: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 80, position: 'center' },
+                red: { bg: '#000000', font: '#ff4444', warning1: '#ff6600', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 130, position: 'center' },
+                purple: { bg: '#1a1625', font: '#9f7aea', warning1: '#d69e2e', warning2: '#ed64a6', countUp: '#ed64a6', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' },
+                overlay: { bg: '#000000', font: '#ffffff', warning1: '#ffaa00', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: true, transparentBg: true, stopAtZero: false, flashIndefinitely: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' }
             };
 
             const p = presets[preset];
@@ -1166,6 +1275,11 @@ pm2 startup</div>
             document.getElementById('noShadow').checked = p.noShadow;
             document.getElementById('stopAtZero').checked = p.stopAtZero;
             document.getElementById('flashIndefinitely').checked = p.flashIndefinitely;
+            document.getElementById('showClock').checked = p.showClock;
+            document.getElementById('showOnlyClock').checked = p.showOnlyClock;
+            document.getElementById('clock24Hour').checked = p.clock24Hour;
+            document.getElementById('clockShowSeconds').checked = p.clockShowSeconds;
+            document.getElementById('clockShowAmPm').checked = p.clockShowAmPm;
             document.getElementById('transparentBg').checked = p.transparentBg;
             document.getElementById('fontSize').value = p.fontSize;
             document.getElementById('fontSizeValue').textContent = p.fontSize + '%';
@@ -1241,6 +1355,10 @@ pm2 startup</div>
         document.getElementById('noShadow').addEventListener('change', updateUrl);
         document.getElementById('stopAtZero').addEventListener('change', updateUrl);
         document.getElementById('flashIndefinitely').addEventListener('change', updateUrl);
+        document.getElementById('showClock').addEventListener('change', updateUrl);
+        document.getElementById('showOnlyClock').addEventListener('change', updateUrl);
+        document.getElementById('clock24Hour').addEventListener('change', updateUrl);
+        document.getElementById('clockShowSeconds').addEventListener('change', updateUrl);
         document.getElementById('transparentBg').addEventListener('change', updateUrl);
         document.getElementById('fontSize').addEventListener('input', function() {
             document.getElementById('fontSizeValue').textContent = this.value + '%';
@@ -1265,7 +1383,8 @@ pm2 startup</div>
             updateUrl();
         });
         document.getElementById('position').addEventListener('change', updateUrl);
-        
+        document.getElementById('clockShowAmPm').addEventListener('change', updateUrl);
+
         // Initialize URL on page load
         updateUrl();
         

@@ -279,7 +279,12 @@
         const hideSecondsOverHour = <%- JSON.stringify(hide_seconds_over_hour) %>;
         const stopAtZero = <%- JSON.stringify(stop_at_zero) %>;
         const flashIndefinitely = <%- JSON.stringify(flash_indefinitely) %>;
-        
+        const showClock = <%- JSON.stringify(show_clock) %>;
+        const showOnlyClock = <%- JSON.stringify(show_only_clock) %>;
+        const clock24Hour = <%- JSON.stringify(clock_24_hour) %>;
+        const clockShowSeconds = <%- JSON.stringify(clock_show_seconds) %>;
+        const clockShowAmPm = <%- JSON.stringify(clock_show_ampm) %>;
+
         // Timer state for offline operation
         let timerState = {
             running: false,
@@ -301,6 +306,39 @@
         let isFlashing = false;
         let reconnectNotificationTimeout = null;
         
+        function getCurrentTimeFormatted() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            let timeString = '';
+            let ampm = '';
+
+            // Handle 12-hour format
+            if (!clock24Hour) {
+                ampm = hours >= 12 ? ' PM' : ' AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // Convert 0 to 12
+            }
+
+            // Clock always shows hours (doesn't use hideHourAuto)
+            timeString = String(hours).padStart(2, '0') + ':';
+            timeString += String(minutes).padStart(2, '0');
+
+            // Use clock-specific seconds setting
+            if (clockShowSeconds) {
+                timeString += ':' + String(seconds).padStart(2, '0');
+            }
+
+            // Add AM/PM for 12-hour format if enabled
+            if (!clock24Hour && clockShowAmPm) {
+                timeString += ampm;
+            }
+
+            return timeString;
+        }
+
         function formatTime(totalSeconds) {
             const isNegative = totalSeconds < 0;
             const absSeconds = Math.abs(totalSeconds);
@@ -413,24 +451,39 @@
         function updateDisplay() {
             updateLocalTimer();
 
-            // Always use local calculated time for smooth countdown
-            let displayTime = timerState.running ? timerState.localRemaining : timerState.remaining;
+            let displayTimeFormatted;
+            let displayTime = 0;
+            let isShowingClock = false;
 
-            // When counting up, display negative values; when not, clamp to 0
-            if (!timerState.countingUp) {
-                displayTime = Math.max(0, displayTime);
+            // Show only clock mode - always show clock, ignore timer state
+            if (showOnlyClock) {
+                displayTimeFormatted = getCurrentTimeFormatted();
+                isShowingClock = true;
+            }
+            // Show current time when timer is not running and showClock is true
+            else if (!timerState.running && showClock && timerState.remaining === 0) {
+                displayTimeFormatted = getCurrentTimeFormatted();
+                isShowingClock = true;
+            } else {
+                // Always use local calculated time for smooth countdown
+                displayTime = timerState.running ? timerState.localRemaining : timerState.remaining;
+
+                // When counting up, display negative values; when not, clamp to 0
+                if (!timerState.countingUp) {
+                    displayTime = Math.max(0, displayTime);
+                }
+
+                // Force display to 00:00:00 when timer is finished and NOT counting up
+                if ((timerState.finished || displayTime <= 0) && !timerState.countingUp) {
+                    displayTime = 0;
+                }
+
+                // Use fractional seconds for smooth countdown, but round for display
+                displayTimeFormatted = formatTime(Math.floor(displayTime));
             }
 
-            // Force display to 00:00:00 when timer is finished and NOT counting up
-            if ((timerState.finished || displayTime <= 0) && !timerState.countingUp) {
-                displayTime = 0;
-            }
-
-            // Use fractional seconds for smooth countdown, but round for display
-            const displayTimeFormatted = formatTime(Math.floor(displayTime));
-
-            // Smooth interpolation within seconds using CSS transforms
-            const absFractionalPart = Math.abs(displayTime) - Math.floor(Math.abs(displayTime));
+            // Smooth interpolation within seconds using CSS transforms (skip for clock)
+            const absFractionalPart = isShowingClock ? 0 : (Math.abs(displayTime) - Math.floor(Math.abs(displayTime)));
             const smoothness = 1 - absFractionalPart; // Creates smooth transition effect
 
             // Only update text if the displayed second has changed to avoid flicker
@@ -447,7 +500,11 @@
             }
 
             // Handle color changes and flashing
-            if (displayTime < 0) {
+            if (isShowingClock) {
+                // Showing clock - use normal font color, no warnings
+                stopFlashing();
+                timerDisplay.classList.remove('warning1', 'warning2', 'counting-up');
+            } else if (displayTime < 0) {
                 // Counting up after zero - remove warnings, use count-up color
                 stopFlashing();
                 timerDisplay.classList.remove('warning1', 'warning2');
