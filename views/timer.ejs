@@ -73,10 +73,9 @@
                 text-shadow: 0 0 <%= (20 * font_size / 100) %>px currentColor;
             <% } else { %>text-shadow: none;<% } %>
             letter-spacing: 0.1em;
-            transition: color 0.3s ease, text-shadow 0.3s ease, opacity 0.1s ease, transform 0.1s ease;
+            transition: color 0.3s ease, text-shadow 0.3s ease;
             user-select: none;
             line-height: 1;
-            will-change: opacity, transform;
         }
 
         .timer-display.counting-up {
@@ -173,13 +172,15 @@
         }
 
         @-webkit-keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.3; }
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
         }
 
         @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.3; }
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
         }
         
         .connection-status {
@@ -279,6 +280,7 @@
         const hideSecondsOverHour = <%- JSON.stringify(hide_seconds_over_hour) %>;
         const stopAtZero = <%- JSON.stringify(stop_at_zero) %>;
         const flashIndefinitely = <%- JSON.stringify(flash_indefinitely) %>;
+        const flashCountUp = <%- JSON.stringify(flash_count_up) %>;
         const showClock = <%- JSON.stringify(show_clock) %>;
         const showOnlyClock = <%- JSON.stringify(show_only_clock) %>;
         const clock24Hour = <%- JSON.stringify(clock_24_hour) %>;
@@ -487,16 +489,16 @@
             const smoothness = 1 - absFractionalPart; // Creates smooth transition effect
 
             // Only update text if the displayed second has changed to avoid flicker
-            if (timerDisplay.textContent !== displayTimeFormatted) {
-                timerDisplay.textContent = displayTimeFormatted;
-            }
-
-            // Apply subtle visual feedback for smooth countdown feeling
-            if (timerState.running && (!timerState.finished || timerState.countingUp)) {
-                const opacity = 0.9 + (smoothness * 0.1); // Subtle opacity pulse
-                timerDisplay.style.opacity = opacity;
-            } else {
-                timerDisplay.style.opacity = '1';
+            // Use innerHTML to preserve separator spans and avoid resetting blink animation
+            const currentText = timerDisplay.textContent.replace(/\n/g, '');
+            if (currentText !== displayTimeFormatted) {
+                if (timerState.running && !isShowingClock) {
+                    // Add blinking separators when running (they blink inverse to flash)
+                    let displayText = displayTimeFormatted.replace(/:/g, '<span class="separator blink">:</span>');
+                    timerDisplay.innerHTML = displayText;
+                } else {
+                    timerDisplay.textContent = displayTimeFormatted;
+                }
             }
 
             // Handle color changes and flashing
@@ -505,10 +507,16 @@
                 stopFlashing();
                 timerDisplay.classList.remove('warning1', 'warning2', 'counting-up');
             } else if (displayTime < 0) {
-                // Counting up after zero - remove warnings, use count-up color
-                stopFlashing();
+                // Counting up after zero - use count-up color
                 timerDisplay.classList.remove('warning1', 'warning2');
                 timerDisplay.classList.add('counting-up');
+
+                // Flash when counting up if enabled
+                if (flashCountUp && !isFlashing) {
+                    startFlashing();
+                } else if (!flashCountUp) {
+                    stopFlashing();
+                }
             } else if ((timerState.finished || displayTime <= 0) && !timerState.countingUp) {
                 if (!isFlashing) {
                     // Ensure we're in warning2 state before flashing
@@ -530,16 +538,6 @@
                 // Normal state - explicitly remove all warning classes
                 stopFlashing();
                 timerDisplay.classList.remove('warning1', 'warning2', 'counting-up');
-            }
-
-            // Add blinking separators when running
-            if (timerState.running) {
-                const separators = timerDisplay.textContent.match(/:/g);
-                if (separators) {
-                    let displayText = timerDisplay.textContent;
-                    displayText = displayText.replace(/:/g, '<span class="separator blink">:</span>');
-                    timerDisplay.innerHTML = displayText;
-                }
             }
         }
         

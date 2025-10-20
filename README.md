@@ -17,9 +17,15 @@ A professional, feature-rich countdown timer with real-time synchronization, cus
 ### 🎨 Customizable Display
 - **Color Schemes**: Customize background, font, warning colors, and count-up color
 - **Visual Alerts**: Configurable warning colors at 5 minutes and 1 minute
-- **Flashing Modes**: Flash indefinitely or for 10 seconds when timer expires
+- **Flashing Modes**: Flash indefinitely, for 10 seconds, or only at zero (not when counting up)
 - **Flexible Positioning**: Place timer anywhere on screen (5 position options)
 - **Responsive Design**: Works perfectly on all screen sizes from mobile to 4K displays
+
+### 🕐 Clock Modes
+- **Clock Display**: Show current time when timer is reset
+- **Clock-Only Mode**: Display as a clock without timer functionality
+- **12/24 Hour Format**: Choose between 12-hour (with AM/PM) or 24-hour format
+- **Clock Customization**: Control seconds display and AM/PM visibility independently
 
 ### 🎛️ Advanced Controls
 - **Control Panel**: Intuitive interface with preset timers
@@ -29,11 +35,12 @@ A professional, feature-rich countdown timer with real-time synchronization, cus
 
 ### 🔧 Display Options
 - Auto-hide hours when zero
-- Show/hide seconds
+- Show/hide seconds (timer and clock independent)
 - Hide seconds when timer > 1 hour
 - Custom font sizes (50-200%)
 - Text shadow/glow effects
 - Transparent background mode for overlays
+- Inverted separator blinking synchronized with flash
 
 ## 🚀 Quick Start
 
@@ -82,6 +89,16 @@ Customize the timer using URL parameters:
 |-----------|-------------|---------|---------|
 | `stop-at-zero` | Stop at zero (no count up) | false | true |
 | `flash-indefinitely` | Flash indefinitely at zero | true | false |
+| `flash-count-up` | Flash when counting up | true | false |
+
+#### Clock Display Parameters
+| Parameter | Description | Default | Example |
+|-----------|-------------|---------|---------|
+| `show-clock` | Show current time when reset | false | true |
+| `show-only-clock` | Show only clock (ignore timer) | false | true |
+| `clock-24-hour` | Use 24-hour clock format | true | false |
+| `clock-show-seconds` | Show seconds in clock | true | false |
+| `clock-show-ampm` | Show AM/PM in 12-hour clock | true | false |
 
 #### Display Parameters
 | Parameter | Description | Default | Example |
@@ -110,6 +127,9 @@ Customize the timer using URL parameters:
 # Flash for 10 seconds only
 /?flash-indefinitely=false
 
+# Count up without flashing
+/?flash-count-up=false
+
 # Overlay mode (transparent background)
 /?transparent-bg=true&font-color=%23ffffff&no-shadow=true
 
@@ -118,6 +138,15 @@ Customize the timer using URL parameters:
 
 # Modern blue theme
 /?background=%232d3748&font-color=%2363b3ed&hide-hour-auto=on
+
+# Clock display when reset
+/?show-clock=true
+
+# Clock-only mode (12-hour format)
+/?show-only-clock=true&clock-24-hour=false&clock-show-seconds=false
+
+# Clock without AM/PM
+/?show-only-clock=true&clock-24-hour=false&clock-show-ampm=false
 ```
 
 ### Control Panel (`/control`)
