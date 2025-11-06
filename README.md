@@ -6,6 +6,9 @@ A professional, feature-rich countdown timer with real-time synchronization, cus
 ![Node.js](https://img.shields.io/badge/node-%3E%3D14.0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+![Screenshot](https://raw.githubusercontent.com/zitlem//Timely/master/Screenshot1.png)
+![Screenshot](https://raw.githubusercontent.com/zitlem//Timely/master/Screenshot2.png)
+
 ## ✨ Features
 
 ### 🎯 Core Functionality
@@ -318,3 +321,4 @@ This project is provided as-is for educational and commercial use.
 ---
 
 **Need Help?** Visit `/help` in your browser for the complete interactive documentation and URL builder.
+
