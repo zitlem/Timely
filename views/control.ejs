@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=5.0, user-scalable=yes">
     <title>Timer Control</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link href="/css_control.css" rel="stylesheet">
@@ -14,41 +14,134 @@
         }
         
         :root {
-            --primary-color: #667eea;
-            --secondary-color: #764ba2;
+            --primary-color: #1c1c1c;
+            --secondary-color: #111111;
             --success-color: #10b981;
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
             --dark-color: #1f2937;
             --light-color: #f8fafc;
             --border-radius: 16px;
-            --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
         }
         
+        html {
+            overflow-y: auto;
+            overflow-x: hidden;
+            height: 100%;
+            <% if (transparent_bg) { %>
+            background: transparent;
+            <% } else if (background) { %>
+            background: <%= background %>;
+            background-attachment: fixed;
+            <% } else { %>
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            background-attachment: fixed;
+            <% } %>
+        }
+
+        body {
+            min-height: 100vh;
+            background: transparent;
+        }
+
+        /* Use CSS zoom on html element for better compatibility */
+        @media (max-height: 900px) {
+            html {
+                zoom: 0.95;
+            }
+        }
+
+        @media (max-height: 800px) {
+            html {
+                zoom: 0.88;
+            }
+        }
+
+        @media (max-height: 700px) {
+            html {
+                zoom: 0.77;
+            }
+        }
+
+        @media (max-height: 600px) {
+            html {
+                zoom: 0.66;
+            }
+        }
+
+        @media (max-height: 500px) {
+            html {
+                zoom: 0.55;
+            }
+        }
+
+        @media (max-height: 400px) {
+            html {
+                zoom: 0.44;
+            }
+        }
+
+        /* Force scrollbar gutter on desktop to prevent layout shift */
+        @media (min-width: 768px) {
+            html {
+                scrollbar-gutter: stable;
+            }
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
             position: relative;
-            overflow-x: hidden;
+            overflow: visible;
+            box-sizing: border-box;
+        }
+
+        /* Allow scrolling when zoomed content is too tall for viewport */
+        @media (max-height: 600px) {
+            body {
+                align-items: flex-start;
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+        }
+
+        /* Prevent text cutoff by scrollbar */
+        html::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        html::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        html::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+
+        html::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
         
         body::before {
+            <% if (!transparent_bg) { %>
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: 
-                radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+            background:
+                radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
             pointer-events: none;
+            <% } %>
         }
         
         .control-container {
@@ -70,7 +163,7 @@
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(90deg, #4a4a4a, #2a2a2a);
             border-radius: var(--border-radius) var(--border-radius) 0 0;
         }
         
@@ -78,17 +171,17 @@
             text-align: center;
             color: var(--dark-color);
             font-size: clamp(1.5rem, 4vw, 2rem);
-            margin-bottom: clamp(20px, 5vw, 30px);
+            margin-bottom: clamp(10px, 3vw, 15px);
             font-weight: 600;
             letter-spacing: -0.025em;
         }
-        
-        
+
+
         .status-display {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             border-radius: 12px;
-            padding: clamp(8x, 4vw, 10px);
-            margin-bottom: clamp(8px, 4vw, 10px);
+            padding: clamp(6px, 3vw, 8px);
+            margin-bottom: clamp(6px, 3vw, 8px);
             text-align: center;
             border: 1px solid #e2e8f0;
             position: relative;
@@ -141,32 +234,32 @@
         }
         
         .presets-section {
-            margin-bottom: clamp(20px, 5vw, 24px);
+            margin-bottom: clamp(12px, 4vw, 16px);
         }
-        
+
         .presets-label {
             display: block;
-            margin-bottom: 16px;
+            margin-bottom: 10px;
             color: var(--dark-color);
             font-weight: 600;
             font-size: clamp(0.9rem, 3vw, 1rem);
             text-align: center;
         }
-        
+
         .presets-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: clamp(6px, 2vw, 10px);
-            margin-bottom: clamp(8px, 4vw, 10px);
+            margin-bottom: clamp(6px, 3vw, 8px);
         }
         
         .preset-btn {
-            padding: clamp(8px, 2vw, 12px) clamp(6px, 1.5vw, 10px);
+            padding: clamp(6px, 2vw, 10px) clamp(4px, 1.5vw, 8px);
             border: 2px solid #e2e8f0;
             border-radius: 8px;
             background: #ffffff;
             color: var(--dark-color);
-            font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+            font-size: clamp(0.8rem, 2.5vw, 0.95rem);
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -218,23 +311,23 @@
         }
 
         .input-section {
-            margin-bottom: clamp(20px, 5vw, 30px);
+            margin-bottom: clamp(12px, 4vw, 16px);
         }
-        
+
         .input-label {
             display: block;
-            margin-bottom: 16px;
+            margin-bottom: 10px;
             color: var(--dark-color);
             font-weight: 600;
             font-size: clamp(0.9rem, 3vw, 1rem);
             text-align: center;
         }
-        
+
         .input-group {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: clamp(10px, 3vw, 16px);
-            margin-bottom: clamp(8px, 5vw, 10px);
+            gap: clamp(8px, 2.5vw, 12px);
+            margin-bottom: clamp(6px, 3vw, 8px);
         }
         
         .input-field {
@@ -264,6 +357,24 @@
             font-family: 'Inter', monospace;
             font-weight: 600;
             color: var(--dark-color);
+            overflow: visible;
+        }
+
+        /* Hide number input spinner arrows */
+        .input-field input[type=number]::-webkit-inner-spin-button,
+        .input-field input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .input-field input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        .input-field input[type=date],
+        .input-field input[type=time] {
+            overflow: hidden;
         }
         
         .input-field input:focus {
@@ -277,12 +388,47 @@
         .input-field input:hover:not(:focus) {
             border-color: #cbd5e1;
         }
-        
+
+        .input-field select {
+            width: 100%;
+            padding: clamp(12px, 3vw, 16px) clamp(8px, 2vw, 12px);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: clamp(1rem, 3.5vw, 1.2rem);
+            text-align: center;
+            text-align-last: center;
+            background: #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', monospace;
+            font-weight: 600;
+            color: var(--dark-color);
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231f2937' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right clamp(8px, 2vw, 12px) center;
+            background-size: 12px;
+        }
+
+        .input-field select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .input-field select:hover:not(:focus) {
+            border-color: #cbd5e1;
+        }
+
         .button-group {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: clamp(10px, 3vw, 16px);
-            margin-bottom: clamp(8px, 4vw, 10px);
+            gap: clamp(8px, 2.5vw, 12px);
+            margin-bottom: clamp(6px, 3vw, 8px);
         }
         
         .btn {
@@ -403,44 +549,8 @@
             background: linear-gradient(135deg, var(--danger-color), #dc2626);
         }
         
-        /* Mobile optimizations */
+        /* Mobile notification positioning - only adjust transform direction */
         @media (max-width: 600px) {
-            body {
-                padding: 16px;
-            }
-            
-            .control-container {
-                padding: 20px 16px;
-                margin: 0;
-            }
-            
-            .presets-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-            }
-            
-            .preset-btn {
-                padding: 10px 8px;
-                font-size: 0.7rem;
-            }
-            
-            .input-group {
-                gap: 8px;
-            }
-            
-            .input-field input {
-                padding: 12px 8px;
-            }
-            
-            .button-group {
-                gap: 8px;
-            }
-            
-            .btn {
-                padding: 14px 12px;
-                font-size: 0.8rem;
-            }
-            
             .notification {
                 top: 16px;
                 right: 16px;
@@ -448,118 +558,24 @@
                 transform: translateY(-100px);
                 max-width: none;
             }
-            
+
             .notification.show {
                 transform: translateY(0);
             }
         }
-        
-        @media (max-width: 480px) {
-            .presets-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 6px;
-            }
-            
-            .preset-btn {
-                padding: 8px 6px;
-                font-size: 0.65rem;
-            }
-            
-            .input-group {
-                gap: 6px;
-            }
-            
-            .input-field input {
-                padding: 10px 6px;
-                font-size: 1rem;
-            }
-            
-            .btn {
-                padding: 12px 8px;
-                font-size: 0.75rem;
-            }
-            
-            .button-group {
-                gap: 6px;
-            }
-        }
-        
-        @media (max-height: 700px) {
-            .control-container {
-                padding: 16px;
-            }
-            
-            .title {
-                margin-bottom: 16px;
-            }
-            
-            .status-display {
-                margin-bottom: 16px;
-                padding: 16px;
-            }
-            
-            .presets-section {
-                margin-bottom: 16px;
-            }
-            
-            .input-group {
-                margin-bottom: 16px;
-            }
-        }
-        
-        /* Landscape phone optimization */
-        @media (max-height: 500px) and (orientation: landscape) {
-            body {
-                padding: 8px;
-            }
-            
-            .control-container {
-                max-width: 600px;
-                padding: 12px 16px;
-            }
-            
-            .title {
-                font-size: 1.3rem;
-                margin-bottom: 12px;
-            }
-            
-            .status-display {
-                padding: 12px;
-                margin-bottom: 12px;
-            }
-            
-            .status-time {
-                font-size: 1.8rem;
-            }
-            
-            .presets-section {
-                margin-bottom: 12px;
-            }
-            
-            .presets-grid {
-                gap: 4px;
-            }
-            
-            .preset-btn {
-                padding: 6px 4px;
-                font-size: 0.6rem;
-            }
-            
-            .input-group {
-                margin-bottom: 12px;
-            }
-            
-            .button-group {
-                margin-bottom: 12px;
-            }
-        }
+
+        /* Removed all other media queries - zoom scaling handles all sizing adjustments */
     </style>
 </head>
 <body>
     <div class="control-container">
         <h1 class="title">Timer Control</h1>
-        
-        
+
+        <div class="status-display" style="margin-bottom: 10px;">
+            <div class="status-time" id="currentTime" style="margin-bottom: 5px;">00:00:00</div>
+            <button class="mode-btn" id="clockFormatBtn" onclick="toggleClockFormat()" style="font-size: 0.75rem; padding: 4px 12px; margin-bottom: 8px;">24-hour</button>
+        </div>
+
         <div class="status-display">
             <div class="status-time" id="statusTime">00:00:00</div>
             <div class="status-info" id="statusInfo">Ready</div>
@@ -593,7 +609,7 @@
                 </div>
                 <div class="input-field">
                     <label for="minutes">Minutes</label>
-                    <input type="number" id="minutes" min="0" max="59" value="5">
+                    <input type="number" id="minutes" min="0" max="59" value="10">
                 </div>
                 <div class="input-field">
                     <label for="seconds">Seconds</label>
@@ -604,10 +620,25 @@
 
         <div class="input-section" id="targetSection" style="display: none;">
             <label class="input-label">Countdown to Specific Time</label>
-            <div class="input-group" style="grid-template-columns: 1fr;">
+            <div class="input-group" style="grid-template-columns: 2fr 1fr 1fr 80px;">
                 <div class="input-field">
-                    <label for="targetDateTime">Date & Time</label>
-                    <input type="datetime-local" id="targetDateTime">
+                    <label for="targetDate">Date</label>
+                    <input type="date" id="targetDate">
+                </div>
+                <div class="input-field">
+                    <label for="targetHour">Hour</label>
+                    <input type="number" id="targetHour" min="0" max="23" value="12">
+                </div>
+                <div class="input-field">
+                    <label for="targetMinute">Minute</label>
+                    <input type="number" id="targetMinute" min="0" max="59" value="0">
+                </div>
+                <div class="input-field" id="ampmField" style="display: none;">
+                    <label for="targetAmPm">AM/PM</label>
+                    <select id="targetAmPm">
+                        <option value="AM">AM</option>
+                        <option value="PM" selected>PM</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -644,6 +675,8 @@
         const statusTime = document.getElementById('statusTime');
         const statusInfo = document.getElementById('statusInfo');
         const notification = document.getElementById('notification');
+        const currentTimeDisplay = document.getElementById('currentTime');
+        const clockFormatBtn = document.getElementById('clockFormatBtn');
 
         // Local timer state for smooth countdown
         let timerState = {
@@ -657,6 +690,9 @@
         };
 
         let currentMode = 'duration'; // 'duration' or 'target'
+
+        // Load clock format preference from localStorage
+        let is24HourFormat = localStorage.getItem('clockFormat24Hour') !== 'false'; // Default to true
 
         function formatTime(totalSeconds) {
             const isNegative = totalSeconds < 0;
@@ -732,18 +768,44 @@ function updateLocalTimer() {
                 targetModeBtn.classList.add('active');
 
                 // Set default target time to 15 minutes from now if empty
-                const targetInput = document.getElementById('targetDateTime');
-                if (!targetInput.value) {
+                const targetDateInput = document.getElementById('targetDate');
+                const targetHourInput = document.getElementById('targetHour');
+                const targetMinuteInput = document.getElementById('targetMinute');
+                const targetAmPmInput = document.getElementById('targetAmPm');
+
+                if (!targetDateInput.value) {
                     const now = new Date();
                     now.setMinutes(now.getMinutes() + 15);
-                    // Format to datetime-local format
+
+                    // Format date
                     const year = now.getFullYear();
                     const month = String(now.getMonth() + 1).padStart(2, '0');
                     const day = String(now.getDate()).padStart(2, '0');
-                    const hours = String(now.getHours()).padStart(2, '0');
-                    const minutes = String(now.getMinutes()).padStart(2, '0');
-                    targetInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    targetDateInput.value = `${year}-${month}-${day}`;
+
+                    // Format time based on 12/24 hour format
+                    let hours = now.getHours();
+                    const minutes = now.getMinutes();
+
+                    if (is24HourFormat) {
+                        targetHourInput.value = hours;
+                        targetHourInput.max = 23;
+                        targetMinuteInput.value = minutes;
+                    } else {
+                        // Convert to 12-hour format
+                        const ampm = hours >= 12 ? 'PM' : 'AM';
+                        hours = hours % 12;
+                        hours = hours ? hours : 12; // Convert 0 to 12
+                        targetHourInput.value = hours;
+                        targetHourInput.max = 12;
+                        targetHourInput.min = 1;
+                        targetMinuteInput.value = minutes;
+                        targetAmPmInput.value = ampm;
+                    }
                 }
+
+                // Update hour input range and AM/PM visibility based on format
+                updateTargetTimeFormat();
             }
         }
 
@@ -858,27 +920,44 @@ function updateLocalTimer() {
                 notificationMessage = `Timer started: ${timeText}`;
             } else {
                 // Target time mode
-                const targetDateTime = document.getElementById('targetDateTime').value;
+                const targetDate = document.getElementById('targetDate').value;
+                let targetHour = parseInt(document.getElementById('targetHour').value);
+                const targetMinute = parseInt(document.getElementById('targetMinute').value);
 
-                if (!targetDateTime) {
-                    showNotification('Please select a target date and time', 'error');
+                if (!targetDate) {
+                    showNotification('Please select a target date', 'error');
                     return;
                 }
 
-                const targetTime = new Date(targetDateTime);
+                // Convert to 24-hour format if in 12-hour mode
+                if (!is24HourFormat) {
+                    const ampm = document.getElementById('targetAmPm').value;
+                    if (ampm === 'PM' && targetHour !== 12) {
+                        targetHour += 12;
+                    } else if (ampm === 'AM' && targetHour === 12) {
+                        targetHour = 0;
+                    }
+                }
+
+                // Create target datetime
+                const targetDateTime = new Date(targetDate);
+                targetDateTime.setHours(targetHour, targetMinute, 0, 0);
                 const now = new Date();
 
-                if (targetTime <= now) {
+                if (targetDateTime <= now) {
                     showNotification('Target time must be in the future', 'error');
                     return;
                 }
 
                 requestBody = {
-                    targetTime: targetTime.toISOString(),
+                    targetTime: targetDateTime.toISOString(),
                     countingUp: countingUp
                 };
 
-                notificationMessage = `Timer started to ${targetTime.toLocaleString()}`;
+                const timeFormat = is24HourFormat
+                    ? targetDateTime.toLocaleString('en-US', { hour12: false })
+                    : targetDateTime.toLocaleString('en-US', { hour12: true });
+                notificationMessage = `Timer started to ${timeFormat}`;
             }
 
             fetch('/api/start', {
@@ -989,7 +1068,85 @@ function updateLocalTimer() {
                 updateDisplay();
             }
         });
-		
+
+        // Current time display functions
+        function updateCurrentTime() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            let ampm = '';
+
+            if (!is24HourFormat) {
+                // 12-hour format
+                ampm = hours >= 12 ? ' PM' : ' AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // Convert 0 to 12
+            }
+
+            const timeString = String(hours).padStart(2, '0') + ':' +
+                               String(minutes).padStart(2, '0') + ':' +
+                               String(seconds).padStart(2, '0') + ampm;
+
+            currentTimeDisplay.textContent = timeString;
+        }
+
+        function updateTargetTimeFormat() {
+            const targetHourInput = document.getElementById('targetHour');
+            const ampmField = document.getElementById('ampmField');
+            const targetAmPmInput = document.getElementById('targetAmPm');
+
+            if (is24HourFormat) {
+                // 24-hour format
+                targetHourInput.min = 0;
+                targetHourInput.max = 23;
+                ampmField.style.display = 'none';
+
+                // Convert current value if it was in 12-hour format
+                let currentHour = parseInt(targetHourInput.value) || 0;
+                if (currentHour >= 1 && currentHour <= 12 && targetAmPmInput) {
+                    const ampm = targetAmPmInput.value;
+                    if (ampm === 'PM' && currentHour !== 12) {
+                        currentHour += 12;
+                    } else if (ampm === 'AM' && currentHour === 12) {
+                        currentHour = 0;
+                    }
+                    targetHourInput.value = currentHour;
+                }
+            } else {
+                // 12-hour format
+                targetHourInput.min = 1;
+                targetHourInput.max = 12;
+                ampmField.style.display = 'block';
+
+                // Convert current value if it was in 24-hour format
+                let currentHour = parseInt(targetHourInput.value) || 12;
+                if (currentHour >= 0 && currentHour <= 23) {
+                    const ampm = currentHour >= 12 ? 'PM' : 'AM';
+                    currentHour = currentHour % 12;
+                    currentHour = currentHour ? currentHour : 12;
+                    targetHourInput.value = currentHour;
+                    targetAmPmInput.value = ampm;
+                }
+            }
+        }
+
+        function toggleClockFormat() {
+            is24HourFormat = !is24HourFormat;
+            localStorage.setItem('clockFormat24Hour', is24HourFormat);
+            clockFormatBtn.textContent = is24HourFormat ? '24-hour' : '12-hour';
+            updateCurrentTime();
+            updateTargetTimeFormat();
+        }
+
+        // Initialize clock format button and target time format
+        clockFormatBtn.textContent = is24HourFormat ? '24-hour' : '12-hour';
+        updateTargetTimeFormat();
+
+        // Update current time every second
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+
         // Add click handlers to preset buttons for visual feedback
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', function() {

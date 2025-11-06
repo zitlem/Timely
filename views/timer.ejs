@@ -99,7 +99,11 @@
             <% } else { %>text-shadow: none;<% } %>
         }
         
-        .timer-display.flashing {
+        .digit-group {
+            display: inline-block;
+        }
+
+        .timer-display.flashing .digit-group {
             -webkit-animation: flash 1s ease-in-out infinite;
             -moz-animation: flash 1s ease-in-out infinite;
             -o-animation: flash 1s ease-in-out infinite;
@@ -111,23 +115,20 @@
         @-webkit-keyframes flash {
             0% {
                 opacity: 1;
-                color: <%= warning_color_2 %>;
                 <% if (show_shadow) { %>
-                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px <%= warning_color_2 %>;
+                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px currentColor;
                 <% } else { %>text-shadow: none;<% } %>
             }
             50% {
                 opacity: 0.2;
-                color: <%= warning_color_2 %>;
                 <% if (show_shadow) { %>
-                    text-shadow: 0 0 <%= (10 * font_size / 100) %>px <%= warning_color_2 %>;
+                    text-shadow: 0 0 <%= (10 * font_size / 100) %>px currentColor;
                 <% } else { %>text-shadow: none;<% } %>
             }
             100% {
                 opacity: 1;
-                color: <%= warning_color_2 %>;
                 <% if (show_shadow) { %>
-                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px <%= warning_color_2 %>;
+                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px currentColor;
                 <% } else { %>text-shadow: none;<% } %>
             }
         }
@@ -135,23 +136,20 @@
         @keyframes flash {
             0% {
                 opacity: 1;
-                color: <%= warning_color_2 %>;
                 <% if (show_shadow) { %>
-                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px <%= warning_color_2 %>;
+                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px currentColor;
                 <% } else { %>text-shadow: none;<% } %>
             }
             50% {
                 opacity: 0.2;
-                color: <%= warning_color_2 %>;
                 <% if (show_shadow) { %>
-                    text-shadow: 0 0 <%= (10 * font_size / 100) %>px <%= warning_color_2 %>;
+                    text-shadow: 0 0 <%= (10 * font_size / 100) %>px currentColor;
                 <% } else { %>text-shadow: none;<% } %>
             }
             100% {
                 opacity: 1;
-                color: <%= warning_color_2 %>;
                 <% if (show_shadow) { %>
-                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px <%= warning_color_2 %>;
+                    text-shadow: 0 0 <%= (40 * font_size / 100) %>px currentColor;
                 <% } else { %>text-shadow: none;<% } %>
             }
         }
@@ -493,8 +491,14 @@
             const currentText = timerDisplay.textContent.replace(/\n/g, '');
             if (currentText !== displayTimeFormatted) {
                 if (timerState.running && !isShowingClock) {
-                    // Add blinking separators when running (they blink inverse to flash)
-                    let displayText = displayTimeFormatted.replace(/:/g, '<span class="separator blink">:</span>');
+                    // Wrap digits and separators separately so flash doesn't affect separators
+                    const parts = displayTimeFormatted.split(':');
+                    let displayText = parts.map((part, index) => {
+                        const wrappedPart = `<span class="digit-group">${part}</span>`;
+                        return index < parts.length - 1
+                            ? wrappedPart + '<span class="separator blink">:</span>'
+                            : wrappedPart;
+                    }).join('');
                     timerDisplay.innerHTML = displayText;
                 } else {
                     timerDisplay.textContent = displayTimeFormatted;
@@ -578,10 +582,18 @@
 
             // Sync logic
             if (!oldRunning && serverData.running) {
-                // Timer just started, initialize local timer
+                // Timer just started or resumed, initialize local timer
+                // When resuming, we need to set remaining to the current value so the calculation works
+                // remaining - elapsed should give us the actual time
+                // If resumed at -5 seconds, remaining should be -5, elapsed starts at 0
                 timerState.remaining = adjustedRemaining;
                 timerState.localRemaining = adjustedRemaining;
                 timerState.localStartTime = clientTime;
+
+                // Preserve finished state when resuming from count-up
+                if (adjustedRemaining <= 0) {
+                    timerState.finished = true;
+                }
             } else if (serverData.running) {
                 // Timer running, use gradual sync to prevent any jumps
                 const currentLocal = timerState.localRemaining;

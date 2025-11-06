@@ -74,7 +74,8 @@ class CountdownTimer {
             this.finished = false;
         }
 
-        if (this.remainingSeconds > 0 || this.isTargetMode) {
+        // Allow resuming when counting up (negative remainingSeconds), in target mode, or with positive time
+        if (this.remainingSeconds > 0 || this.isTargetMode || (this.countingUp && this.remainingSeconds <= 0)) {
             this.running = true;
             this.paused = false;
             this.startTime = Date.now();
@@ -88,7 +89,12 @@ class CountdownTimer {
             this.pauseTime = Date.now();
             // Update remaining seconds when pausing
             const elapsed = (this.pauseTime - this.startTime) / 1000;
-            this.remainingSeconds = Math.max(0, this.remainingSeconds - elapsed);
+            // Allow negative values when counting up
+            if (this.countingUp) {
+                this.remainingSeconds = this.remainingSeconds - elapsed;
+            } else {
+                this.remainingSeconds = Math.max(0, this.remainingSeconds - elapsed);
+            }
             console.log(`Timer paused: ${this.remainingSeconds} seconds remaining`);
         }
     }
@@ -252,11 +258,21 @@ app.get('/', (req, res) => {
 });
 
 app.get('/control', (req, res) => {
-    res.render('control');
+    const transparentBg = req.query['transparent-bg'] === 'true';
+    const background = req.query.background || null;
+    res.render('control', {
+        transparent_bg: transparentBg,
+        background: background
+    });
 });
 
 app.get('/help', (req, res) => {
-    res.render('help');
+    const transparentBg = req.query['transparent-bg'] === 'true';
+    const background = req.query.background || null;
+    res.render('help', {
+        transparent_bg: transparentBg,
+        background: background
+    });
 });
 
 // API Routes

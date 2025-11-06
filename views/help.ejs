@@ -52,8 +52,8 @@
         }
         
         :root {
-            --primary-color: #667eea;
-            --secondary-color: #764ba2;
+            --primary-color: #1c1c1c;
+            --secondary-color: #111111;
             --success-color: #10b981;
             --warning-color: #f59e0b;
             --danger-color: #ef4444;
@@ -62,12 +62,18 @@
             --border-color: #e2e8f0;
             --code-bg: #f1f5f9;
             --border-radius: 12px;
-            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
         }
-        
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            <% if (transparent_bg) { %>
+            background: transparent;
+            <% } else if (background) { %>
+            background: <%= background %>;
+            <% } else { %>
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            <% } %>
             min-height: 100vh;
             padding: 20px;
             line-height: 1.6;
@@ -709,9 +715,6 @@
 <!-- Stop at zero and flash indefinitely -->
 /?stop-at-zero=true&flash-indefinitely=true
 
-<!-- Count up without flashing -->
-/?flash-count-up=false
-
 <!-- Show current time when timer is reset -->
 /?show-clock=true
 
@@ -736,9 +739,62 @@
                 <div class="alert alert-warning">
                     <strong>Note:</strong> URL encode color values (# becomes %23). The URL builder below handles this automatically.
                 </div>
+
+                <h2 style="margin-top: 40px;">Control & Help Page Customization</h2>
+                <p>The control panel and help pages also support background customization:</p>
+
+                <h3>Control Page Parameters</h3>
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Description</th>
+                            <th>Default</th>
+                            <th>Example Values</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>background</code></td>
+                            <td>Background color or CSS gradient</td>
+                            <td>linear-gradient(135deg, #1c1c1c 0%, #111111 100%)</td>
+                            <td>#1c1c1c, linear-gradient(...)</td>
+                        </tr>
+                        <tr>
+                            <td><code>transparent-bg</code></td>
+                            <td>Enable transparent background</td>
+                            <td>false</td>
+                            <td>true, false</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Control Page Examples</h4>
+                <div class="code-block"><!-- Default dark gradient -->
+/control
+
+<!-- Solid color background -->
+/control?background=%231a1a1a
+
+<!-- Custom gradient -->
+/control?background=linear-gradient(135deg,%20%23667eea%200%,%20%23764ba2%20100%)
+
+<!-- Transparent for OBS overlay -->
+/control?transparent-bg=true</div>
+
+                <h3 style="margin-top: 30px;">Help Page Parameters</h3>
+                <p>The help page supports the same parameters as the control page:</p>
+                <div class="code-block"><!-- Default dark gradient -->
+/help
+
+<!-- Custom background -->
+/help?background=%23003366
+
+<!-- Transparent -->
+/help?transparent-bg=true</div>
             </div>
         </div>
-        
+
         <!-- URL Builder Tab -->
         <div id="builder" class="tab-content">
             <div class="section">
@@ -911,9 +967,73 @@
                         <small>Transparent bg, white text</small>
                     </a>
                 </div>
+
+                <h2 style="margin-top: 40px;">Control Page URL Builder</h2>
+                <p>Customize the control panel appearance:</p>
+
+                <div class="url-builder">
+                    <div class="form-group">
+                        <label>Background Type</label>
+                        <select id="controlBgType" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 1rem;">
+                            <option value="gradient">Gradient (Default)</option>
+                            <option value="solid">Solid Color</option>
+                            <option value="custom">Custom CSS</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="controlGradientSection">
+                        <label>Gradient Color 1</label>
+                        <div class="color-input-group">
+                            <input type="color" id="controlGradColor1" value="#1c1c1c">
+                            <input type="text" id="controlGradColor1Text" value="#1c1c1c" placeholder="#1c1c1c">
+                        </div>
+                        <label style="margin-top: 15px;">Gradient Color 2</label>
+                        <div class="color-input-group">
+                            <input type="color" id="controlGradColor2" value="#111111">
+                            <input type="text" id="controlGradColor2Text" value="#111111" placeholder="#111111">
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="controlSolidSection" style="display: none;">
+                        <label>Background Color</label>
+                        <div class="color-input-group">
+                            <input type="color" id="controlBgColor" value="#1c1c1c">
+                            <input type="text" id="controlBgColorText" value="#1c1c1c" placeholder="#1c1c1c">
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="controlCustomSection" style="display: none;">
+                        <label>Custom CSS Background Value</label>
+                        <input type="text" id="controlCustomBg" placeholder="e.g., linear-gradient(45deg, #667eea, #764ba2)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.95rem; font-family: monospace;">
+                        <small style="color: #64748b; display: block; margin-top: 5px;">Enter any valid CSS background value</small>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="controlTransparentBg">
+                            <label for="controlTransparentBg">Use transparent background (overrides all color settings)</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Generated Control URL</label>
+                        <div class="generated-url">
+                            <span id="generatedControlUrl">/control</span>
+                            <button class="copy-button" onclick="copyControlUrl()">Copy</button>
+                        </div>
+                        <button class="preview-button" onclick="previewControl()">Open in New Tab</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Live Preview</label>
+                        <div style="width: 100%; height: 400px; border: 2px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                            <iframe id="controlPreview" src="/control" style="width: 100%; height: 100%; border: none;"></iframe>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        
+
         <!-- API Reference Tab -->
         <div id="api" class="tab-content">
             <div class="section">
@@ -1407,7 +1527,134 @@ pm2 startup</div>
 
         // Initialize URL on page load
         updateUrl();
-        
+
+        // Control URL Builder Functions
+        function updateControlUrl() {
+            const transparentBg = document.getElementById('controlTransparentBg').checked;
+            const bgType = document.getElementById('controlBgType').value;
+
+            let url = '/control';
+            const params = [];
+
+            if (transparentBg) {
+                params.push('transparent-bg=true');
+            } else {
+                let bgValue = '';
+
+                if (bgType === 'gradient') {
+                    const color1 = document.getElementById('controlGradColor1Text').value || '#1c1c1c';
+                    const color2 = document.getElementById('controlGradColor2Text').value || '#111111';
+                    bgValue = `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
+                } else if (bgType === 'solid') {
+                    bgValue = document.getElementById('controlBgColorText').value || '#1c1c1c';
+                } else if (bgType === 'custom') {
+                    bgValue = document.getElementById('controlCustomBg').value || '';
+                }
+
+                if (bgValue) {
+                    params.push(`background=${encodeURIComponent(bgValue)}`);
+                }
+            }
+
+            if (params.length > 0) {
+                url += '?' + params.join('&');
+            }
+
+            document.getElementById('generatedControlUrl').textContent = url;
+
+            // Update live preview
+            document.getElementById('controlPreview').src = url;
+        }
+
+        function toggleControlBgSections() {
+            const bgType = document.getElementById('controlBgType').value;
+
+            document.getElementById('controlGradientSection').style.display = bgType === 'gradient' ? 'block' : 'none';
+            document.getElementById('controlSolidSection').style.display = bgType === 'solid' ? 'block' : 'none';
+            document.getElementById('controlCustomSection').style.display = bgType === 'custom' ? 'block' : 'none';
+
+            updateControlUrl();
+        }
+
+        function copyControlUrl() {
+            const urlText = document.getElementById('generatedControlUrl').textContent;
+            const fullUrl = window.location.origin + urlText;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(fullUrl).then(() => {
+                    showCopied();
+                }).catch(err => {
+                    console.error('Clipboard error:', err);
+                });
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.value = fullUrl;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showCopied();
+            }
+        }
+
+        function previewControl() {
+            const url = document.getElementById('generatedControlUrl').textContent;
+            window.open(url, '_blank');
+        }
+
+        // Event listeners for Control URL builder
+        document.getElementById('controlBgType').addEventListener('change', toggleControlBgSections);
+
+        // Gradient colors
+        document.getElementById('controlGradColor1').addEventListener('input', (e) => {
+            document.getElementById('controlGradColor1Text').value = e.target.value;
+            updateControlUrl();
+        });
+
+        document.getElementById('controlGradColor1Text').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(color)) {
+                document.getElementById('controlGradColor1').value = color;
+            }
+            updateControlUrl();
+        });
+
+        document.getElementById('controlGradColor2').addEventListener('input', (e) => {
+            document.getElementById('controlGradColor2Text').value = e.target.value;
+            updateControlUrl();
+        });
+
+        document.getElementById('controlGradColor2Text').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(color)) {
+                document.getElementById('controlGradColor2').value = color;
+            }
+            updateControlUrl();
+        });
+
+        // Solid color
+        document.getElementById('controlBgColor').addEventListener('input', (e) => {
+            document.getElementById('controlBgColorText').value = e.target.value;
+            updateControlUrl();
+        });
+
+        document.getElementById('controlBgColorText').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (/^#[0-9A-F]{6}$/i.test(color)) {
+                document.getElementById('controlBgColor').value = color;
+            }
+            updateControlUrl();
+        });
+
+        // Custom CSS
+        document.getElementById('controlCustomBg').addEventListener('input', updateControlUrl);
+
+        // Transparent background
+        document.getElementById('controlTransparentBg').addEventListener('change', updateControlUrl);
+
+        // Initialize Control URL on page load
+        updateControlUrl();
+
         // Set hostname in all API examples
         function setHostnames() {
             const hostname = window.location.host;
