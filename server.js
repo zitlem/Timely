@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const ipRangeCheck = require('ip-range-check');
+const session = require('express-session');
 
 const app = express();
 const PORT = process.env.PORT || 80;
@@ -11,6 +12,17 @@ app.use(express.json());
 app.use(express.static('static'));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Session configuration
+app.use(session({
+    secret: 'timer-control-secret-key-change-this-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true
+    }
+}));
 
 // IP whitelist configuration
 let CONTROL_WHITELIST = [
@@ -28,6 +40,17 @@ try {
     }
 } catch (error) {
     console.log('Warning: Could not load control_whitelist.json');
+}
+
+// Load configuration for password
+let CONFIG = { controlPassword: 'admin' }; // Default password
+try {
+    if (fs.existsSync('config.json')) {
+        const configData = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+        CONFIG = { ...CONFIG, ...configData };
+    }
+} catch (error) {
+    console.log('Warning: Could not load config.json, using default password');
 }
 
 
@@ -183,7 +206,7 @@ function getClientIP(req) {
 
 function isIPWhitelisted(ip) {
     if (CONTROL_WHITELIST.length === 0) return false;
-    
+
     try {
         return CONTROL_WHITELIST.some(entry => {
             if (entry.includes('/')) {
@@ -198,6 +221,14 @@ function isIPWhitelisted(ip) {
         console.error('Error checking IP whitelist:', error);
         return false;
     }
+}
+
+function isAuthenticated(req) {
+    const clientIP = getClientIP(req);
+    const ipWhitelisted = isIPWhitelisted(clientIP);
+    const sessionAuthenticated = req.session && req.session.authenticated === true;
+
+    return ipWhitelisted || sessionAuthenticated;
 }
 
 // Routes
@@ -258,6 +289,18 @@ app.get('/', (req, res) => {
 });
 
 app.get('/control', (req, res) => {
+    const clientIP = getClientIP(req);
+    const ipWhitelisted = isIPWhitelisted(clientIP);
+    const sessionAuthenticated = req.session && req.session.authenticated === true;
+
+    // If not authenticated by IP or session, show login page
+    if (!ipWhitelisted && !sessionAuthenticated) {
+        return res.render('control-login', {
+            clientIP: clientIP
+        });
+    }
+
+    // Authenticated - show control page
     const transparentBg = req.query['transparent-bg'] === 'true';
     const background = req.query.background || null;
     res.render('control', {
@@ -278,7 +321,8 @@ app.get('/help', (req, res) => {
 // API Routes
 app.post('/api/start', (req, res) => {
     const clientIP = getClientIP(req);
-    if (!isIPWhitelisted(clientIP)) {
+
+    if (!isAuthenticated(req)) {
         console.log(`Access denied for IP: ${clientIP}`);
         return res.status(403).json({ error: 'Access denied' });
     }
@@ -298,11 +342,12 @@ app.post('/api/start', (req, res) => {
 
 app.post('/api/pause', (req, res) => {
     const clientIP = getClientIP(req);
-    if (!isIPWhitelisted(clientIP)) {
+
+    if (!isAuthenticated(req)) {
         console.log(`Access denied for IP: ${clientIP}`);
         return res.status(403).json({ error: 'Access denied' });
     }
-    
+
     console.log(`Pause request from ${clientIP}`);
     timer.pause();
     res.json({ success: true });
@@ -310,11 +355,12 @@ app.post('/api/pause', (req, res) => {
 
 app.post('/api/reset', (req, res) => {
     const clientIP = getClientIP(req);
-    if (!isIPWhitelisted(clientIP)) {
+
+    if (!isAuthenticated(req)) {
         console.log(`Access denied for IP: ${clientIP}`);
         return res.status(403).json({ error: 'Access denied' });
     }
-    
+
     console.log(`Reset request from ${clientIP}`);
     timer.reset();
     res.json({ success: true });
@@ -323,22 +369,130 @@ app.post('/api/reset', (req, res) => {
 app.get('/api/status', (req, res) => {
     // Get timer status
     const timerStatus = timer.getStatus();
-    
+
     res.json(timerStatus);
+});
+
+// Authentication endpoint
+app.post('/api/auth', (req, res) => {
+    const { password } = req.body;
+
+    if (!password) {
+        return res.status(400).json({ error: 'Password required' });
+    }
+
+    if (password === CONFIG.controlPassword) {
+        // Set session authenticated flag
+        req.session.authenticated = true;
+        console.log(`Successful authentication from ${getClientIP(req)}`);
+        res.json({ success: true });
+    } else {
+        console.log(`Failed authentication attempt from ${getClientIP(req)}`);
+        res.status(401).json({ error: 'Invalid password' });
+    }
+});
+
+// Logout endpoint
+app.post('/api/logout', (req, res) => {
+    const clientIP = getClientIP(req);
+
+    req.session.destroy((err) => {
+        if (err) {
+            console.error(`Logout error for ${clientIP}:`, err);
+            return res.status(500).json({ error: 'Failed to logout' });
+        }
+
+        console.log(`User logged out from ${clientIP}`);
+        res.json({ success: true });
+    });
 });
 
 
 app.get('/api/whitelist', (req, res) => {
-    const clientIP = getClientIP(req);
-    if (!isIPWhitelisted(clientIP)) {
+    if (!isAuthenticated(req)) {
         return res.status(403).json({ error: 'Access denied' });
     }
-    
+
     res.json({
         whitelist: CONTROL_WHITELIST,
-        your_ip: clientIP,
+        your_ip: getClientIP(req),
         access: 'granted'
     });
+});
+
+// Add IP to whitelist
+app.post('/api/whitelist/add', (req, res) => {
+    if (!isAuthenticated(req)) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { ip } = req.body;
+
+    if (!ip || typeof ip !== 'string') {
+        return res.status(400).json({ error: 'Invalid IP address' });
+    }
+
+    const trimmedIP = ip.trim();
+
+    // Basic validation
+    if (trimmedIP.length === 0) {
+        return res.status(400).json({ error: 'IP address cannot be empty' });
+    }
+
+    // Check if already exists
+    if (CONTROL_WHITELIST.includes(trimmedIP)) {
+        return res.status(400).json({ error: 'IP already in whitelist' });
+    }
+
+    // Add to whitelist
+    CONTROL_WHITELIST.push(trimmedIP);
+
+    // Save to file
+    try {
+        fs.writeFileSync('control_whitelist.json', JSON.stringify(CONTROL_WHITELIST, null, 4));
+        console.log(`IP added to whitelist: ${trimmedIP} by ${getClientIP(req)}`);
+        res.json({ success: true, whitelist: CONTROL_WHITELIST });
+    } catch (error) {
+        console.error('Error saving whitelist:', error);
+        // Remove from memory if save failed
+        CONTROL_WHITELIST = CONTROL_WHITELIST.filter(entry => entry !== trimmedIP);
+        res.status(500).json({ error: 'Failed to save whitelist' });
+    }
+});
+
+// Remove IP from whitelist
+app.post('/api/whitelist/remove', (req, res) => {
+    if (!isAuthenticated(req)) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { ip } = req.body;
+
+    if (!ip || typeof ip !== 'string') {
+        return res.status(400).json({ error: 'Invalid IP address' });
+    }
+
+    const trimmedIP = ip.trim();
+
+    // Check if exists
+    if (!CONTROL_WHITELIST.includes(trimmedIP)) {
+        return res.status(400).json({ error: 'IP not found in whitelist' });
+    }
+
+    // Remove from whitelist
+    CONTROL_WHITELIST = CONTROL_WHITELIST.filter(entry => entry !== trimmedIP);
+
+    // Save to file
+    try {
+        fs.writeFileSync('control_whitelist.json', JSON.stringify(CONTROL_WHITELIST, null, 4));
+        console.log(`IP removed from whitelist: ${trimmedIP} by ${getClientIP(req)}`);
+        res.json({ success: true, whitelist: CONTROL_WHITELIST });
+    } catch (error) {
+        console.error('Error saving whitelist:', error);
+        // Re-add to memory if save failed
+        CONTROL_WHITELIST.push(trimmedIP);
+        res.status(500).json({ error: 'Failed to save whitelist' });
+    }
 });
 
 // Startup info

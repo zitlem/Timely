@@ -501,17 +501,165 @@
             padding: 8px 16px;
             border-radius: 8px;
             font-size: clamp(0.85rem, 3vw, 0.95rem);
+            cursor: pointer;
         }
-        
+
         .timer-link a:hover {
             color: var(--secondary-color);
             background: rgba(102, 126, 234, 0.1);
             transform: translateY(-1px);
         }
-        
+
         .timer-link svg {
             width: clamp(14px, 3vw, 16px);
             height: clamp(14px, 3vw, 16px);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            box-shadow: var(--shadow-lg);
+            max-width: 600px;
+            width: calc(100% - 40px);
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4a4a4a, #2a2a2a);
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: var(--dark-color);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            color: #64748b;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .quick-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #ffffff;
+            color: var(--dark-color);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .quick-btn:hover:not(:disabled) {
+            border-color: var(--success-color);
+            background: var(--success-color);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .quick-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #e2e8f0;
+            background: #f8fafc;
+            color: #94a3b8;
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 10px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: #ffffff;
+            color: var(--danger-color);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', sans-serif;
+            margin-top: 20px;
+        }
+
+        .logout-btn:hover {
+            border-color: var(--danger-color);
+            background: var(--danger-color);
+            color: white;
+            transform: translateY(-1px);
         }
         
 
@@ -529,7 +677,7 @@
             opacity: 0;
             transform: translateX(100px);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
+            z-index: 3000;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             font-size: clamp(0.85rem, 3vw, 0.95rem);
@@ -655,17 +803,78 @@
                     <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
                     <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
                 </svg>
-                Open Timer Display
+                Timer Display
             </a>
-     
-	 
+
             <a href="/help" target="_blank">
                 <svg fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
                 </svg>
-                Open Help
+                Help
             </a>
+
+            <a onclick="openWhitelistModal()" style="cursor: pointer;">
+                <svg fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1zm2 1h10v8H3V5z"/>
+                </svg>
+                IP Whitelist
+            </a>
+        </div>
+    </div>
+
+    <!-- IP Whitelist Modal -->
+    <div id="whitelistModal" class="modal" onclick="closeModalOnOutsideClick(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>IP Whitelist Management</h2>
+                <button class="modal-close" onclick="closeWhitelistModal()">&times;</button>
+            </div>
+
+            <div class="info-box" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px; padding: 12px; margin-bottom: 15px; border: 1px solid #e2e8f0;">
+                <div style="color: #64748b; font-size: 0.8rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; text-align: center;">Your IP Address</div>
+                <div id="currentIP" style="color: var(--dark-color); font-size: 1rem; font-weight: 600; font-family: 'Inter', monospace; text-align: center;">Loading...</div>
+            </div>
+
+            <div class="quick-actions">
+                <button onclick="addMyIP()" class="quick-btn" id="addMyIPBtn">
+                    <svg fill="currentColor" viewBox="0 0 16 16" style="width: 14px; height: 14px; display: inline-block; margin-right: 4px; vertical-align: middle;">
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                    </svg>
+                    Add My IP
+                </button>
+                <button onclick="addMySubnet()" class="quick-btn" id="addMySubnetBtn">
+                    <svg fill="currentColor" viewBox="0 0 16 16" style="width: 14px; height: 14px; display: inline-block; margin-right: 4px; vertical-align: middle;">
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                    </svg>
+                    Add My Subnet (/24)
+                </button>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 10px; color: var(--dark-color); font-weight: 600; font-size: 0.9rem; text-align: center;">Add IP or Subnet</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="newIP" placeholder="e.g., 192.168.1.100 or 192.168.1.0/24" style="flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 0.95rem; font-family: 'Inter', monospace;">
+                    <button onclick="addIPToWhitelist()" class="btn btn-start" style="padding: 12px 20px; font-size: 0.85rem;">Add</button>
+                </div>
+                <div style="color: #64748b; font-size: 0.75rem; margin-top: 6px; text-align: center;">
+                    Supports: Single IPs (127.0.0.1) or CIDR ranges (192.168.1.0/24)
+                </div>
+            </div>
+
+            <div>
+                <label style="display: block; margin-bottom: 10px; color: var(--dark-color); font-weight: 600; font-size: 0.9rem; text-align: center;">Current Whitelist</label>
+                <div id="whitelistEntries">
+                    <!-- Entries will be populated here -->
+                </div>
+            </div>
+
+            <button onclick="logout()" class="logout-btn">
+                <svg fill="currentColor" viewBox="0 0 16 16" style="width: 14px; height: 14px; display: inline-block; margin-right: 4px; vertical-align: middle;">
+                    <path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
+                    <path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                </svg>
+                Logout
+            </button>
         </div>
     </div>
 
@@ -830,10 +1039,9 @@ function updateLocalTimer() {
             })
                 .then(response => {
                     if (response.status === 403) {
-                        // IP not whitelisted
-                        statusInfo.textContent = 'Access Denied - IP Not Whitelisted';
+                        // Not authenticated - shouldn't happen if page loaded correctly
+                        statusInfo.textContent = 'Not Authenticated';
                         statusTime.textContent = '--:--:--';
-                        showNotification('Access denied: Your IP is not whitelisted for control access', 'error');
                         return;
                     }
                     return response.json();
@@ -968,8 +1176,8 @@ function updateLocalTimer() {
                 body: JSON.stringify(requestBody)
             })
             .then(response => {
-                if (response.status === 403) {
-                    throw new Error('Access denied: IP not whitelisted');
+                if (!response.ok) {
+                    throw new Error('Failed to start timer');
                 }
                 return response.json();
             })
@@ -979,12 +1187,7 @@ function updateLocalTimer() {
                 }
             })
             .catch(error => {
-                //console.error('Error starting timer:', error);
-                if (error.message.includes('Access denied')) {
-                    showNotification('Access denied: Your IP is not whitelisted', 'error');
-                } else {
-                    showNotification('Error starting timer', 'error');
-                }
+                showNotification('Error starting timer', 'error');
             });
         }
         
@@ -993,8 +1196,8 @@ function updateLocalTimer() {
                 method: 'POST'
             })
             .then(response => {
-                if (response.status === 403) {
-                    throw new Error('Access denied: IP not whitelisted');
+                if (!response.ok) {
+                    throw new Error('Failed to pause timer');
                 }
                 return response.json();
             })
@@ -1004,12 +1207,7 @@ function updateLocalTimer() {
                 }
             })
             .catch(error => {
-                //console.error('Error pausing timer:', error);
-                if (error.message.includes('Access denied')) {
-                    showNotification('Access denied: Your IP is not whitelisted', 'error');
-                } else {
-                    showNotification('Error pausing timer', 'error');
-                }
+                showNotification('Error pausing timer', 'error');
             });
         }
         
@@ -1018,8 +1216,8 @@ function updateLocalTimer() {
                 method: 'POST'
             })
             .then(response => {
-                if (response.status === 403) {
-                    throw new Error('Access denied: IP not whitelisted');
+                if (!response.ok) {
+                    throw new Error('Failed to reset timer');
                 }
                 return response.json();
             })
@@ -1029,12 +1227,7 @@ function updateLocalTimer() {
                 }
             })
             .catch(error => {
-                //console.error('Error resetting timer:', error);
-                if (error.message.includes('Access denied')) {
-                    showNotification('Access denied: Your IP is not whitelisted', 'error');
-                } else {
-                    showNotification('Error resetting timer', 'error');
-                }
+                showNotification('Error resetting timer', 'error');
             });
         }
         
@@ -1157,6 +1350,271 @@ function updateLocalTimer() {
                 }, 150);
             });
         });
+
+        // IP Whitelist Management Functions
+        let currentUserIP = '';
+
+        function openWhitelistModal() {
+            const modal = document.getElementById('whitelistModal');
+            modal.classList.add('show');
+            loadWhitelist();
+        }
+
+        function closeWhitelistModal() {
+            const modal = document.getElementById('whitelistModal');
+            modal.classList.remove('show');
+        }
+
+        function closeModalOnOutsideClick(event) {
+            if (event.target.id === 'whitelistModal') {
+                closeWhitelistModal();
+            }
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeWhitelistModal();
+            }
+        });
+
+        let currentWhitelist = [];
+
+        function loadWhitelist() {
+            fetch('/api/whitelist')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.whitelist) {
+                        currentWhitelist = data.whitelist;
+                        displayWhitelist(data.whitelist);
+                        currentUserIP = data.your_ip || '';
+                        document.getElementById('currentIP').textContent = currentUserIP || 'Unknown';
+                        updateQuickActionButtons();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading whitelist:', error);
+                });
+        }
+
+        function updateQuickActionButtons() {
+            const myIP = currentUserIP;
+            const mySubnet = calculateMySubnet();
+
+            const ipExists = currentWhitelist.includes(myIP);
+            const subnetExists = mySubnet && currentWhitelist.includes(mySubnet);
+
+            const addMyIPBtn = document.getElementById('addMyIPBtn');
+            const addMySubnetBtn = document.getElementById('addMySubnetBtn');
+
+            if (addMyIPBtn) {
+                addMyIPBtn.disabled = ipExists;
+                if (ipExists) {
+                    addMyIPBtn.style.opacity = '0.5';
+                    addMyIPBtn.style.cursor = 'not-allowed';
+                    addMyIPBtn.title = 'Your IP is already in the whitelist';
+                } else {
+                    addMyIPBtn.style.opacity = '1';
+                    addMyIPBtn.style.cursor = 'pointer';
+                    addMyIPBtn.title = 'Add your current IP address to the whitelist';
+                }
+            }
+
+            if (addMySubnetBtn) {
+                addMySubnetBtn.disabled = subnetExists;
+                if (subnetExists) {
+                    addMySubnetBtn.style.opacity = '0.5';
+                    addMySubnetBtn.style.cursor = 'not-allowed';
+                    addMySubnetBtn.title = 'Your subnet is already in the whitelist';
+                } else {
+                    addMySubnetBtn.style.opacity = '1';
+                    addMySubnetBtn.style.cursor = 'pointer';
+                    addMySubnetBtn.title = 'Add your /24 subnet to the whitelist';
+                }
+            }
+        }
+
+        function addMyIP() {
+            if (!currentUserIP) {
+                showNotification('Unable to detect your IP address', 'error');
+                return;
+            }
+
+            // Add the current IP directly
+            addIPToWhitelistDirect(currentUserIP);
+        }
+
+        function calculateMySubnet() {
+            if (!currentUserIP) return null;
+
+            // For IPv4, convert to /24 subnet
+            if (currentUserIP.includes('.')) {
+                const parts = currentUserIP.split('.');
+                if (parts.length === 4) {
+                    return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
+                }
+            }
+            // For IPv6, use /64 subnet
+            else if (currentUserIP.includes(':')) {
+                return currentUserIP.includes('/') ? currentUserIP : `${currentUserIP}/64`;
+            }
+
+            return null;
+        }
+
+        function addMySubnet() {
+            const subnet = calculateMySubnet();
+
+            if (!subnet) {
+                showNotification('Unable to calculate subnet from your IP', 'error');
+                return;
+            }
+
+            addIPToWhitelistDirect(subnet);
+        }
+
+        function addIPToWhitelistDirect(ip) {
+            fetch('/api/whitelist/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ip })
+            })
+            .then(response => {
+                return response.json().then(data => ({ status: response.status, data }));
+            })
+            .then(({ status, data }) => {
+                if (status === 200 && data.success) {
+                    showNotification(`Added: ${ip}`, 'success');
+                    currentWhitelist = data.whitelist;
+                    displayWhitelist(data.whitelist);
+                } else {
+                    showNotification(data.error || 'Failed to add IP', 'error');
+                    console.error('Add IP error:', data.error);
+                }
+            })
+            .catch(error => {
+                showNotification('Error adding IP to whitelist', 'error');
+                console.error('Network error:', error);
+            });
+        }
+
+        function displayWhitelist(whitelist) {
+            const container = document.getElementById('whitelistEntries');
+
+            if (whitelist.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-size: 0.9rem;">No entries in whitelist</div>';
+                updateQuickActionButtons();
+                return;
+            }
+
+            container.innerHTML = whitelist.map(ip => `
+                <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;">
+                    <span style="font-family: 'Inter', monospace; font-weight: 600; color: var(--dark-color); font-size: 0.95rem;">${ip}</span>
+                    <button onclick="removeIPFromWhitelist('${ip}')" class="btn btn-reset" style="padding: 6px 12px; font-size: 0.75rem;">Remove</button>
+                </div>
+            `).join('');
+
+            updateQuickActionButtons();
+        }
+
+        function addIPToWhitelist() {
+            const ipInput = document.getElementById('newIP');
+            const ip = ipInput.value.trim();
+
+            if (!ip) {
+                showNotification('Please enter an IP address or subnet', 'error');
+                return;
+            }
+
+            fetch('/api/whitelist/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ip })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Added: ${ip}`, 'success');
+                    ipInput.value = '';
+                    currentWhitelist = data.whitelist;
+                    displayWhitelist(data.whitelist);
+                } else {
+                    showNotification(data.error || 'Failed to add IP', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error adding IP to whitelist', 'error');
+            });
+        }
+
+        function removeIPFromWhitelist(ip) {
+            if (!confirm(`Remove ${ip} from whitelist?`)) {
+                return;
+            }
+
+            fetch('/api/whitelist/remove', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ip })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Removed: ${ip}`, 'success');
+                    currentWhitelist = data.whitelist;
+                    displayWhitelist(data.whitelist);
+                } else {
+                    showNotification(data.error || 'Failed to remove IP', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error removing IP from whitelist', 'error');
+            });
+        }
+
+        // Allow Enter key to add IP
+        document.addEventListener('DOMContentLoaded', function() {
+            const newIPInput = document.getElementById('newIP');
+            if (newIPInput) {
+                newIPInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addIPToWhitelist();
+                    }
+                });
+            }
+        });
+
+        // Logout function
+        function logout() {
+            if (!confirm('Are you sure you want to logout?')) {
+                return;
+            }
+
+            fetch('/api/logout', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Logged out successfully', 'success');
+                    // Close modal and redirect to login
+                    closeWhitelistModal();
+                    setTimeout(() => {
+                        window.location.href = '/control';
+                    }, 1000);
+                }
+            })
+            .catch(error => {
+                showNotification('Error logging out', 'error');
+            });
+        }
     </script>
 </body>
 </html>
