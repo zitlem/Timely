@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const ipRangeCheck = require('ip-range-check');
 const session = require('express-session');
+const logger = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 80;
@@ -24,6 +25,16 @@ app.use(session({
     }
 }));
 
+// Security headers middleware
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;");
+    next();
+});
+
 // IP whitelist configuration
 let CONTROL_WHITELIST = [
     // '127.0.0.1',       // localhost
@@ -43,7 +54,7 @@ try {
 }
 
 // Load configuration for password
-let CONFIG = { controlPassword: 'admin' }; // Default password
+let CONFIG = { controlPassword: 'admin', trustProxy: false }; // Default config
 try {
     if (fs.existsSync('config.json')) {
         const configData = JSON.parse(fs.readFileSync('config.json', 'utf8'));
@@ -51,6 +62,92 @@ try {
     }
 } catch (error) {
     console.log('Warning: Could not load config.json, using default password');
+}
+
+// Rate limiting for login attempts
+const loginAttempts = new Map(); // IP -> { count, firstAttempt }
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+
+function isRateLimited(ip) {
+    const now = Date.now();
+    const attempt = loginAttempts.get(ip);
+
+    if (!attempt) return false;
+
+    // Reset if window expired
+    if (now - attempt.firstAttempt > RATE_LIMIT_WINDOW) {
+        loginAttempts.delete(ip);
+        return false;
+    }
+
+    return attempt.count >= RATE_LIMIT_MAX;
+}
+
+function recordLoginAttempt(ip) {
+    const now = Date.now();
+    const attempt = loginAttempts.get(ip);
+
+    if (!attempt || now - attempt.firstAttempt > RATE_LIMIT_WINDOW) {
+        loginAttempts.set(ip, { count: 1, firstAttempt: now });
+    } else {
+        attempt.count++;
+    }
+}
+
+function clearLoginAttempts(ip) {
+    loginAttempts.delete(ip);
+}
+
+// IP validation regex patterns
+const IPV4_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+const IPV4_CIDR_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\/(?:[0-9]|[1-2][0-9]|3[0-2])$/;
+const IPV6_REGEX = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::(?:[0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,7}:$|^(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}$|^(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}$|^(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}$|^::1$|^::$/;
+
+function isValidIP(ip) {
+    if (!ip || typeof ip !== 'string') return false;
+
+    // Check IPv4
+    if (IPV4_REGEX.test(ip)) return true;
+
+    // Check IPv4 CIDR
+    if (IPV4_CIDR_REGEX.test(ip)) return true;
+
+    // Check IPv6 (basic validation)
+    if (IPV6_REGEX.test(ip)) return true;
+
+    // Check IPv6 CIDR (simplified)
+    if (ip.includes(':') && ip.includes('/')) {
+        const [addr, prefix] = ip.split('/');
+        const prefixNum = parseInt(prefix, 10);
+        if (IPV6_REGEX.test(addr) && prefixNum >= 0 && prefixNum <= 128) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Color validation
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+
+function isValidColor(color) {
+    if (!color || typeof color !== 'string') return false;
+    return color === 'transparent' || HEX_COLOR_REGEX.test(color);
+}
+
+function sanitizeColor(color, defaultColor) {
+    if (isValidColor(color)) return color;
+    return defaultColor;
+}
+
+// Safe parseInt with bounds
+function safeParseInt(value, defaultVal, min, max) {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed)) return defaultVal;
+    if (parsed < min) return min;
+    if (parsed > max) return max;
+    return parsed;
 }
 
 
@@ -69,13 +166,37 @@ class CountdownTimer {
         this.isTargetMode = false;
     }
     
-    start(hours = 0, minutes = 0, seconds = 0, targetTime = null, countingUp = true) {
+    start(hours = 0, minutes = 0, seconds = 0, targetTime = null, countingUp = true, targetDate = null, targetHour = null, targetMinute = null) {
         if (!this.running && !this.paused) {
             // Starting fresh timer
             this.countingUp = countingUp; // Set countingUp mode when starting
 
-            if (targetTime) {
-                // Countdown to specific time mode
+            if (targetDate && targetHour !== null && targetMinute !== null) {
+                // Countdown to specific time mode - create datetime on server
+                this.isTargetMode = true;
+
+                // Parse date components from "YYYY-MM-DD"
+                const [year, month, day] = targetDate.split('-').map(Number);
+
+                // Ensure hour and minute are integers
+                const hour = parseInt(targetHour);
+                const minute = parseInt(targetMinute);
+
+                // Create datetime in SERVER's timezone (month is 0-indexed)
+                const targetDateTime = new Date(year, month - 1, day, hour, minute, 0, 0);
+
+                // Store as ISO string for persistence
+                this.targetTime = targetDateTime.toISOString();
+
+                // Calculate remaining time
+                const now = Date.now();
+                const target = targetDateTime.getTime();
+                this.remainingSeconds = Math.max(0, (target - now) / 1000);
+                this.totalSeconds = this.remainingSeconds;
+
+                console.log(`Timer started to target time: ${targetDateTime.toLocaleString()}, countingUp: ${countingUp}`);
+            } else if (targetTime) {
+                // Legacy support: if targetTime ISO string is passed (for persistence loading)
                 this.isTargetMode = true;
                 this.targetTime = targetTime;
                 const now = Date.now();
@@ -195,11 +316,68 @@ class CountdownTimer {
 // Global instances
 const timer = new CountdownTimer();
 
+// Timer persistence
+const TIMER_STATE_FILE = 'timer_state.json';
+
+function saveTimerState() {
+    const state = {
+        totalSeconds: timer.totalSeconds,
+        remainingSeconds: timer.remainingSeconds,
+        running: timer.running,
+        paused: timer.paused,
+        startTime: timer.startTime,
+        pauseTime: timer.pauseTime,
+        finished: timer.finished,
+        countingUp: timer.countingUp,
+        targetTime: timer.targetTime,
+        isTargetMode: timer.isTargetMode,
+        savedAt: Date.now()
+    };
+
+    try {
+        fs.writeFileSync(TIMER_STATE_FILE, JSON.stringify(state, null, 4));
+        console.log('Timer state saved');
+    } catch (error) {
+        console.error('Error saving timer state:', error);
+    }
+}
+
+function loadTimerState() {
+    if (fs.existsSync(TIMER_STATE_FILE)) {
+        try {
+            const state = JSON.parse(fs.readFileSync(TIMER_STATE_FILE, 'utf8'));
+            timer.totalSeconds = state.totalSeconds || 0;
+            timer.remainingSeconds = state.remainingSeconds || 0;
+            timer.running = state.running || false;
+            timer.paused = state.paused || false;
+            timer.startTime = state.startTime || null;
+            timer.pauseTime = state.pauseTime || null;
+            timer.finished = state.finished || false;
+            timer.countingUp = state.countingUp || false;
+            timer.targetTime = state.targetTime || null;
+            timer.isTargetMode = state.isTargetMode || false;
+            console.log('Timer state loaded:', state.running ? 'Running' : 'Stopped');
+        } catch (error) {
+            console.error('Error loading timer state:', error);
+        }
+    }
+}
+
+// Load persisted state
+loadTimerState();
+
 // Utility functions
 function getClientIP(req) {
-    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-           req.headers['x-real-ip'] ||
-           req.connection.remoteAddress ||
+    // Only trust proxy headers if explicitly configured
+    if (CONFIG.trustProxy) {
+        const forwarded = req.headers['x-forwarded-for']?.split(',')[0]?.trim();
+        if (forwarded) return forwarded;
+
+        const realIP = req.headers['x-real-ip'];
+        if (realIP) return realIP;
+    }
+
+    return req.connection.remoteAddress ||
            req.socket.remoteAddress ||
            req.ip;
 }
@@ -231,20 +409,37 @@ function isAuthenticated(req) {
     return ipWhitelisted || sessionAuthenticated;
 }
 
+// Access logging middleware
+accessLoggingMiddleware = (req, res, next) => {
+    const clientIP = getClientIP(req);
+    const endpoint = req.path;
+    const authenticated = isAuthenticated(req);
+
+    // Log access for all endpoints except static files and status polling
+    if (!endpoint.startsWith('/static') && endpoint !== '/api/status') {
+        logger.logAccess(clientIP, endpoint, authenticated);
+    }
+
+    next();
+};
+
+// Apply access logging middleware
+app.use(accessLoggingMiddleware);
+
 // Routes
 app.get('/', (req, res) => {
-    // Get URL parameters with defaults
+    // Get URL parameters with defaults (with validation)
     const transparentBg = req.query['transparent-bg'] === 'true';
-    const background = transparentBg ? 'transparent' : (req.query.background || '#000000');
-    const fontColor = req.query['font-color'] || '#00ff00';
-    const warningColor1 = req.query['warning-color-1'] || '#ff8800';
-    const warningColor2 = req.query['warning-color-2'] || '#ff4444';
-    const countUpColor = req.query['count-up-color'] || warningColor2; // Default to warning-color-2
+    const background = transparentBg ? 'transparent' : sanitizeColor(req.query.background, '#000000');
+    const fontColor = sanitizeColor(req.query['font-color'], '#00ff00');
+    const warningColor1 = sanitizeColor(req.query['warning-color-1'], '#ff8800');
+    const warningColor2 = sanitizeColor(req.query['warning-color-2'], '#ff4444');
+    const countUpColor = sanitizeColor(req.query['count-up-color'], warningColor2); // Default to warning-color-2
     const showSeconds = req.query['show-seconds'] !== 'false';
     const hideHourAuto = req.query['hide-hour-auto'] === 'on';
     const hideSecondsOverHour = req.query['hide-seconds-over-hour'] === 'true';
     const showShadow = req.query['no-shadow'] !== 'true';
-    const fontSize = parseInt(req.query['font-size']) || 100;
+    const fontSize = safeParseInt(req.query['font-size'], 100, 10, 500);
     const stopAtZero = req.query['stop-at-zero'] === 'true';
     const flashIndefinitely = req.query['flash-indefinitely'] !== 'false'; // Default to true
     const flashCountUp = req.query['flash-count-up'] !== 'false'; // Default to true
@@ -327,16 +522,35 @@ app.post('/api/start', (req, res) => {
         return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { hours = 0, minutes = 0, seconds = 0, targetTime = null, countingUp = true } = req.body;
+    const {
+        hours = 0,
+        minutes = 0,
+        seconds = 0,
+        targetDate = null,
+        targetHour = null,
+        targetMinute = null,
+        countingUp = true,
+        source = 'api'
+    } = req.body;
 
-    if (targetTime) {
-        console.log(`Start request from ${clientIP} to target time: ${targetTime}`);
-        timer.start(0, 0, 0, targetTime, countingUp);
+    // Parse and validate time values
+    const parsedHours = safeParseInt(hours, 0, 0, 99);
+    const parsedMinutes = safeParseInt(minutes, 0, 0, 59);
+    const parsedSeconds = safeParseInt(seconds, 0, 0, 59);
+    const parsedTargetHour = safeParseInt(targetHour, 0, 0, 23);
+    const parsedTargetMinute = safeParseInt(targetMinute, 0, 0, 59);
+
+    if (targetDate !== null && targetHour !== null && targetMinute !== null) {
+        // Target time mode - create datetime on server
+        logger.logTargetTimer(clientIP, targetDate, parsedTargetHour, parsedTargetMinute, source);
+        timer.start(0, 0, 0, null, countingUp, targetDate, parsedTargetHour, parsedTargetMinute);
     } else {
-        console.log(`Start request from ${clientIP}: ${hours}h ${minutes}m ${seconds}s`);
-        timer.start(parseInt(hours), parseInt(minutes), parseInt(seconds), null, countingUp);
+        // Duration mode
+        logger.logDurationTimer(clientIP, parsedHours, parsedMinutes, parsedSeconds, source);
+        timer.start(parsedHours, parsedMinutes, parsedSeconds, null, countingUp);
     }
 
+    saveTimerState();
     res.json({ success: true });
 });
 
@@ -348,8 +562,10 @@ app.post('/api/pause', (req, res) => {
         return res.status(403).json({ error: 'Access denied' });
     }
 
-    console.log(`Pause request from ${clientIP}`);
+    const { source = 'api' } = req.body;
+    logger.logPause(clientIP, source);
     timer.pause();
+    saveTimerState();
     res.json({ success: true });
 });
 
@@ -361,8 +577,10 @@ app.post('/api/reset', (req, res) => {
         return res.status(403).json({ error: 'Access denied' });
     }
 
-    console.log(`Reset request from ${clientIP}`);
+    const { source = 'api' } = req.body;
+    logger.logReset(clientIP, source);
     timer.reset();
+    saveTimerState();
     res.json({ success: true });
 });
 
@@ -375,7 +593,14 @@ app.get('/api/status', (req, res) => {
 
 // Authentication endpoint
 app.post('/api/auth', (req, res) => {
+    const clientIP = getClientIP(req);
     const { password } = req.body;
+
+    // Check rate limiting
+    if (isRateLimited(clientIP)) {
+        logger.logAuth(clientIP, false);
+        return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
+    }
 
     if (!password) {
         return res.status(400).json({ error: 'Password required' });
@@ -384,10 +609,12 @@ app.post('/api/auth', (req, res) => {
     if (password === CONFIG.controlPassword) {
         // Set session authenticated flag
         req.session.authenticated = true;
-        console.log(`Successful authentication from ${getClientIP(req)}`);
+        clearLoginAttempts(clientIP); // Clear on successful login
+        logger.logAuth(clientIP, true);
         res.json({ success: true });
     } else {
-        console.log(`Failed authentication attempt from ${getClientIP(req)}`);
+        recordLoginAttempt(clientIP);
+        logger.logAuth(clientIP, false);
         res.status(401).json({ error: 'Invalid password' });
     }
 });
@@ -437,6 +664,11 @@ app.post('/api/whitelist/add', (req, res) => {
     // Basic validation
     if (trimmedIP.length === 0) {
         return res.status(400).json({ error: 'IP address cannot be empty' });
+    }
+
+    // Validate IP format
+    if (!isValidIP(trimmedIP)) {
+        return res.status(400).json({ error: 'Invalid IP address format. Use IPv4, IPv6, or CIDR notation.' });
     }
 
     // Check if already exists
@@ -509,8 +741,110 @@ function printWhitelistInfo() {
     console.log(`\nTotal whitelist entries: ${CONTROL_WHITELIST.length}`);
 }
 
+// Helper function to extract date from log message
+function extractDateFromMessage(message) {
+    // Extract timestamp like "January 1st 2026 20:08:21" from message
+    const timestampRegex = /on ([A-Z][a-z]+) (\d+)(?:st|nd|rd|th)? (\d{4}) (\d{2}):(\d{2}):(\d{2})/;
+    const match = message.match(timestampRegex);
+
+    if (match) {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        const month = monthNames.indexOf(match[1]);
+        const day = parseInt(match[2]);
+        const year = parseInt(match[3]);
+
+        if (month !== -1) {
+            // Return YYYY-MM-DD format for easy comparison
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+    }
+    return '';
+}
+
+// Helper function to detect event type from message
+function detectEventType(message) {
+    if (message.includes('accessed')) return 'access';
+    if (message.includes('set a')) return 'timer';
+    if (message.includes('authenticated') || message.includes('failed authentication')) return 'auth';
+    if (message.includes('paused')) return 'pause';
+    if (message.includes('reset')) return 'reset';
+    return 'other';
+}
+
+// Log viewer endpoint (requires authentication)
+app.get('/log', (req, res) => {
+    if (!isAuthenticated(req)) {
+        return res.status(403).send('Access denied. Please authenticate first.');
+    }
+
+    try {
+        const logFile = logger.getLogFile();
+        const rotatedLog = logFile + '.1';
+
+        let logsText = '';
+
+        // Read rotated log first (older entries)
+        if (fs.existsSync(rotatedLog)) {
+            logsText += fs.readFileSync(rotatedLog, 'utf8');
+        }
+
+        // Read current log (newer entries)
+        if (fs.existsSync(logFile)) {
+            logsText += fs.readFileSync(logFile, 'utf8');
+        }
+
+        // Parse logs into structured array
+        const logs = [];
+        if (logsText) {
+            const lines = logsText.trim().split('\n');
+            lines.forEach(line => {
+                if (line.trim()) {
+                    // Extract IP address from start of line
+                    // Format: "<IP> <message>"
+                    const match = line.match(/^(\S+)\s+(.+)$/);
+                    if (match) {
+                        const ip = match[1];
+                        const message = match[2];
+
+                        logs.push({
+                            ip: ip,
+                            message: message,
+                            fullLine: line,
+                            date: extractDateFromMessage(message),
+                            eventType: detectEventType(message)
+                        });
+                    } else {
+                        // Fallback for lines that don't match expected format
+                        logs.push({
+                            ip: '',
+                            message: line,
+                            fullLine: line,
+                            date: '',
+                            eventType: 'other'
+                        });
+                    }
+                }
+            });
+        }
+
+        // Render HTML template
+        res.render('log', { logs });
+    } catch (error) {
+        console.error('Error reading log file:', error);
+        res.status(500).send('Error reading log file');
+    }
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     printWhitelistInfo();
     console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
+
+// Auto-save timer state periodically
+setInterval(() => {
+    if (timer.running) {
+        saveTimerState();
+    }
+}, 10000); // Every 10 seconds

@@ -17,6 +17,9 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
+            margin: 0;
+            padding: 0 2vw;
+            box-sizing: border-box;
             background-color: <%= background %>;
             <% if (transparent_bg) { %>background: transparent;<% } %>
             font-family: 'Share Tech Mono', 'Courier New', monospace;
@@ -76,6 +79,7 @@
             transition: color 0.3s ease, text-shadow 0.3s ease;
             user-select: none;
             line-height: 1;
+            white-space: nowrap;
         }
 
         .timer-display.counting-up {
@@ -236,9 +240,15 @@
             color: white;
         }
         
+        @media (max-width: 700px) {
+            .timer-display {
+                font-size: min(<%= (16 * font_size / 100) %>vw, <%= (13 * font_size / 100) %>vh);
+            }
+        }
+
         @media (max-width: 600px) {
             .timer-display {
-                font-size: min(<%= (18 * font_size / 100) %>vw, <%= (12 * font_size / 100) %>vh);
+                font-size: min(<%= (14 * font_size / 100) %>vw, <%= (11 * font_size / 100) %>vh);
             }
 
             /* Adjust corner positioning for mobile */
@@ -305,9 +315,10 @@
         let flashingTimeout = null;
         let isFlashing = false;
         let reconnectNotificationTimeout = null;
-        
+        let serverTimeOffset = 0; // Difference between server time and client time
+
         function getCurrentTimeFormatted() {
-            const now = new Date();
+            const now = new Date(Date.now() + serverTimeOffset);
             let hours = now.getHours();
             const minutes = now.getMinutes();
             const seconds = now.getSeconds();
@@ -412,8 +423,8 @@
                 let newRemaining;
 
                 if (timerState.isTargetMode && timerState.targetTime) {
-                    // Calculate remaining time to target directly
-                    const now = Date.now();
+                    // Calculate remaining time to target directly using server time
+                    const now = Date.now() + serverTimeOffset;
                     const target = new Date(timerState.targetTime).getTime();
                     newRemaining = (target - now) / 1000;
                 } else if (timerState.localStartTime) {
@@ -549,6 +560,11 @@
             const wasOffline = !isOnline;
             const clientTime = Date.now();
 
+            // Calculate server time offset
+            if (serverData.serverTime) {
+                serverTimeOffset = serverData.serverTime - clientTime;
+            }
+
             // Calculate network latency compensation
             const networkLatency = serverData.serverTime ? (clientTime - serverData.serverTime) / 2 : 0;
 
@@ -628,34 +644,35 @@
             }
         }
         
-        function updateTimer() {
-            fetch('/api/status', {
-                headers: {
-                    'X-Client-Type': 'timer-display'
-                }
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
+        async function updateTimerFromServer() {
+            try {
+                const response = await fetch('/api/status', {
+                    headers: {
+                        'X-Client-Type': 'timer-display'
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    syncWithServer(data);
-                    consecutiveErrors = 0;
-                })
-                .catch(error => {
-                    consecutiveErrors++;
-                    
-                    // Consider offline after 3 consecutive errors
-                    if (consecutiveErrors >= 3 && isOnline) {
-                        isOnline = false;
-                        showConnectionStatus('Offline - Running Locally', 'offline', 80);
-                        //console.warn('Lost connection to server, running timer locally');
-                    }
-                    
-                    //console.error('Error fetching timer status:', error);
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                syncWithServer(data);
+                consecutiveErrors = 0;
+
+            } catch (error) {
+                consecutiveErrors++;
+
+                // Consider offline after 3 consecutive errors
+                if (consecutiveErrors >= 3 && isOnline) {
+                    isOnline = false;
+                    showConnectionStatus('Offline - Running Locally', 'offline', 80);
+                    //console.warn('Lost connection to server, running timer locally');
+                }
+
+                //console.error('Error fetching timer status:', error);
+                throw error;  // Re-throw for synchronizedUpdate to handle
+            }
         }
         
         function startFlashing() {
@@ -729,28 +746,46 @@
             }, animationDuration + 50);
         }
         
-        // Update from server every .5 second
-        setInterval(updateTimer, 500);
+        // Synchronized update - prevents staggered seconds between countdown and clock
+        let updateInProgress = false;
 
-        // Update display every .5 second
-        setInterval(updateDisplay, 500);
+        async function synchronizedUpdate() {
+            if (updateInProgress) return;  // Prevent overlapping updates
+            updateInProgress = true;
+
+            try {
+                // First: Get fresh server data
+                await updateTimerFromServer();
+
+                // Second: Update display with synced data
+                updateDisplay();
+            } catch (error) {
+                // Error already handled in updateTimerFromServer
+                // Still update display with local calculations
+                updateDisplay();
+            } finally {
+                updateInProgress = false;
+            }
+        }
+
+        // Single interval for synchronized updates every .5 second
+        setInterval(synchronizedUpdate, 500);
 
         // Initial update
-        updateTimer();
-        updateDisplay();
+        synchronizedUpdate();
 
         // Handle page visibility changes to resync when tab becomes active
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 // Page became visible, force a server sync
-                updateTimer();
+                synchronizedUpdate();
             }
         });
-        
+
         // Handle online/offline events
         window.addEventListener('online', () => {
             //console.log('Network connection restored');
-            updateTimer();
+            synchronizedUpdate();
         });
 
         window.addEventListener('offline', () => {
@@ -777,7 +812,7 @@
                 updateDisplay();
 
                 // Force immediate server sync
-                setTimeout(updateTimer, 50);
+                setTimeout(synchronizedUpdate, 50);
             },
 
             pause: function() {
@@ -788,7 +823,7 @@
                 updateDisplay();
 
                 // Force immediate server sync
-                setTimeout(updateTimer, 50);
+                setTimeout(synchronizedUpdate, 50);
             },
 
             reset: function() {
@@ -804,7 +839,7 @@
                 updateDisplay();
 
                 // Force immediate server sync
-                setTimeout(updateTimer, 50);
+                setTimeout(synchronizedUpdate, 50);
             }
         };
 

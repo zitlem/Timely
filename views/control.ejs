@@ -329,7 +329,24 @@
             gap: clamp(8px, 2.5vw, 12px);
             margin-bottom: clamp(6px, 3vw, 8px);
         }
-        
+
+        @media (max-width: 400px) {
+            .input-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Target time input grid - responsive layout */
+        .target-input-grid {
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+        }
+
+        @media (max-width: 400px) {
+            .target-input-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .input-field {
             position: relative;
         }
@@ -692,9 +709,13 @@
         .notification.success {
             background: linear-gradient(135deg, var(--success-color), #059669);
         }
-        
+
         .notification.error {
             background: linear-gradient(135deg, var(--danger-color), #dc2626);
+        }
+
+        .notification.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
         }
         
         /* Mobile notification positioning - only adjust transform direction */
@@ -768,7 +789,7 @@
 
         <div class="input-section" id="targetSection" style="display: none;">
             <label class="input-label">Countdown to Specific Time</label>
-            <div class="input-group" style="grid-template-columns: 2fr 1fr 1fr 80px;">
+            <div class="input-group target-input-grid">
                 <div class="input-field">
                     <label for="targetDate">Date</label>
                     <input type="date" id="targetDate">
@@ -785,7 +806,7 @@
                     <label for="targetAmPm">AM/PM</label>
                     <select id="targetAmPm">
                         <option value="AM">AM</option>
-                        <option value="PM" selected>PM</option>
+                        <option value="PM">PM</option>
                     </select>
                 </div>
             </div>
@@ -894,16 +915,26 @@
             remaining: 0,
             localStartTime: null,
             localRemaining: 0,
+            finished: false,
             countingUp: false,
-            isTargetMode: false
+            isTargetMode: false,
+            targetTime: null
         };
 
         let currentMode = 'duration'; // 'duration' or 'target'
+        let serverTimeOffset = 0; // Difference between server time and client time
+        let consecutiveErrors = 0; // Track consecutive network errors for offline detection
 
         // Load clock format preference from localStorage
         let is24HourFormat = localStorage.getItem('clockFormat24Hour') !== 'false'; // Default to true
 
         function formatTime(totalSeconds) {
+            // Defensive: Handle invalid inputs (undefined, NaN, null)
+            if (typeof totalSeconds !== 'number' || !isFinite(totalSeconds)) {
+                // Return a safe default instead of NaN:NaN:NaN
+                return '00:00:00';
+            }
+
             const isNegative = totalSeconds < 0;
             const absSeconds = Math.abs(totalSeconds);
             const hours = Math.floor(absSeconds / 3600);
@@ -917,16 +948,52 @@
         }
 
 function updateLocalTimer() {
-            if (timerState.running && timerState.localStartTime) {
-                const elapsed = (Date.now() - timerState.localStartTime) / 1000;
-                const newRemaining = timerState.remaining - elapsed;
+            if (timerState.running) {
+                let newRemaining;
 
-                // Allow negative values when counting up
-                if (timerState.countingUp || newRemaining >= 0) {
+                if (timerState.isTargetMode && timerState.targetTime) {
+                    // Calculate remaining time to target directly using server time
+                    const now = Date.now() + serverTimeOffset;
+                    const target = new Date(timerState.targetTime).getTime();
+                    newRemaining = (target - now) / 1000;
+                } else if (timerState.localStartTime) {
+                    // Duration mode - calculate from elapsed time
+                    const elapsed = (Date.now() - timerState.localStartTime) / 1000;
+                    newRemaining = timerState.remaining - elapsed;
+                } else {
+                    // FALLBACK: Timer is running but we don't have localStartTime set
+                    // This happens when:
+                    // - Disconnect before first sync
+                    // - Tab switch cleared state + offline
+                    // Initialize localStartTime NOW and calculate elapsed time
+                    if (!timerState.localStartTime) {
+                        timerState.localStartTime = Date.now();
+                    }
+                    const elapsed = (Date.now() - timerState.localStartTime) / 1000;
+                    newRemaining = timerState.remaining - elapsed;
+                }
+
+                // Validate that newRemaining is a valid number before using it
+                if (typeof newRemaining !== 'number' || !isFinite(newRemaining)) {
+                    // Safety fallback: use last known good value or zero
+                    newRemaining = timerState.localRemaining || timerState.remaining || 0;
+                }
+
+                // Keep fractional seconds for smooth display
+                if (newRemaining >= 0 || timerState.countingUp) {
                     timerState.localRemaining = newRemaining;
+
+                    // Mark as finished when countdown reaches zero
+                    if (newRemaining <= 0 && !timerState.finished) {
+                        timerState.finished = true;
+                        if (!timerState.countingUp) {
+                            timerState.running = false;
+                        }
+                    }
                 } else {
                     timerState.localRemaining = 0;
-                    if (!timerState.countingUp) {
+                    if (!timerState.finished && !timerState.countingUp) {
+                        timerState.finished = true;
                         timerState.running = false;
                     }
                 }
@@ -938,6 +1005,12 @@ function updateLocalTimer() {
 
             // Use local calculated time for smooth countdown
             let displayTime = timerState.running ? timerState.localRemaining : timerState.remaining;
+
+            // Defensive: Ensure displayTime is a valid number
+            if (typeof displayTime !== 'number' || !isFinite(displayTime)) {
+                // Fallback to a safe value
+                displayTime = timerState.remaining || 0;
+            }
 
             // When counting up, allow negative values; otherwise clamp to 0
             if (!timerState.countingUp) {
@@ -982,8 +1055,11 @@ function updateLocalTimer() {
                 const targetMinuteInput = document.getElementById('targetMinute');
                 const targetAmPmInput = document.getElementById('targetAmPm');
 
+// Update hour input range and AM/PM visibility based on format FIRST
+                updateTargetTimeFormat();
+
                 if (!targetDateInput.value) {
-                    const now = new Date();
+                    const now = new Date(Date.now() + serverTimeOffset);
                     now.setMinutes(now.getMinutes() + 15);
 
                     // Format date
@@ -1012,9 +1088,6 @@ function updateLocalTimer() {
                         targetAmPmInput.value = ampm;
                     }
                 }
-
-                // Update hour input range and AM/PM visibility based on format
-                updateTargetTimeFormat();
             }
         }
 
@@ -1052,24 +1125,61 @@ function updateLocalTimer() {
                     const clientTime = Date.now();
                     const oldRunning = timerState.running;
 
+                    // Calculate server-client time offset for clock display
+                    if (data.serverTime) {
+                        serverTimeOffset = data.serverTime - clientTime;
+                    }
+
                     // Update timer state from server
                     timerState.running = data.running;
                     timerState.paused = data.paused;
+                    timerState.finished = data.finished;
                     timerState.countingUp = data.countingUp !== undefined ? data.countingUp : timerState.countingUp;
                     timerState.isTargetMode = data.isTargetMode !== undefined ? data.isTargetMode : timerState.isTargetMode;
+                    timerState.targetTime = data.targetTime !== undefined ? data.targetTime : timerState.targetTime;
+
+                    // Reset consecutive errors on successful sync
+                    consecutiveErrors = 0;
 
 // Sync logic
                     if (!oldRunning && data.running) {
-                        // Timer just started, initialize local timer
+                        // Timer just started or resumed, initialize local timer
                         timerState.remaining = data.remaining;
                         timerState.localRemaining = data.remaining;
                         timerState.localStartTime = clientTime;
+
+                        // Preserve finished state when resuming from count-up
+                        if (data.remaining <= 0) {
+                            timerState.finished = true;
+                        }
                     } else if (data.running) {
-                        // Timer running, resync with server time
-                        // Update remaining to server value and reset local start time
-                        timerState.remaining = data.remaining;
-                        timerState.localRemaining = data.remaining;
-                        timerState.localStartTime = clientTime; // Reset reference point on each sync
+                        // Timer running, use gradual drift correction instead of resetting localStartTime
+                        const currentLocal = timerState.localRemaining;
+
+                        // Validate that we have valid values before drift correction
+                        if (typeof currentLocal === 'number' && isFinite(currentLocal)) {
+                            const drift = data.remaining - currentLocal;
+                            const driftMagnitude = Math.abs(drift);
+
+                            // Adjust correction speed based on drift size
+                            let correctionSpeed;
+                            if (driftMagnitude < 0.5) {
+                                correctionSpeed = 0.1; // Very slow correction for tiny drift
+                            } else if (driftMagnitude < 2) {
+                                correctionSpeed = 0.3; // Medium correction
+                            } else {
+                                correctionSpeed = 0.4; // Faster correction for large drift
+                            }
+
+                            // Apply correction without resetting start time
+                            const correction = drift * correctionSpeed;
+                            timerState.remaining += correction;
+                        } else {
+                            // State is corrupted, reinitialize from server
+                            timerState.remaining = data.remaining;
+                            timerState.localRemaining = data.remaining;
+                            timerState.localStartTime = clientTime;
+                        }
                     } else {
                         // Not running, use server data directly
                         timerState.remaining = data.remaining;
@@ -1093,8 +1203,16 @@ function updateLocalTimer() {
                     updateDisplay();
                 })
                 .catch(error => {
-                    //console.error('Error fetching status:', error);
-                    statusInfo.textContent = 'Connection Error';
+                    consecutiveErrors++;
+
+                    // Consider offline after 3 consecutive errors
+                    if (consecutiveErrors >= 3) {
+                        statusInfo.textContent = 'Offline';
+                        statusInfo.classList.add('warning');
+                    }
+
+                    // Continue updating display with local calculations during offline
+                    updateDisplay();
                 });
         }
         
@@ -1120,7 +1238,8 @@ function updateLocalTimer() {
                     hours: hours,
                     minutes: minutes,
                     seconds: seconds,
-                    countingUp: countingUp
+                    countingUp: countingUp,
+                    source: 'gui'
                 };
 
                 const totalTime = hours * 3600 + minutes * 60 + seconds;
@@ -1147,25 +1266,25 @@ function updateLocalTimer() {
                     }
                 }
 
-                // Create target datetime
-                const targetDateTime = new Date(targetDate);
-                targetDateTime.setHours(targetHour, targetMinute, 0, 0);
-                const now = new Date();
-
-                if (targetDateTime <= now) {
-                    showNotification('Target time must be in the future', 'error');
-                    return;
-                }
-
+                // Send raw date/time components to server
+                // No datetime creation on client - server handles it
                 requestBody = {
-                    targetTime: targetDateTime.toISOString(),
-                    countingUp: countingUp
+                    targetDate: targetDate,      // "YYYY-MM-DD"
+                    targetHour: targetHour,       // 0-23
+                    targetMinute: targetMinute,   // 0-59
+                    countingUp: countingUp,
+                    source: 'gui'
                 };
 
-                const timeFormat = is24HourFormat
-                    ? targetDateTime.toLocaleString('en-US', { hour12: false })
-                    : targetDateTime.toLocaleString('en-US', { hour12: true });
-                notificationMessage = `Timer started to ${timeFormat}`;
+                // Format notification message
+                const hourDisplay = is24HourFormat
+                    ? `${targetHour.toString().padStart(2, '0')}:${targetMinute.toString().padStart(2, '0')}`
+                    : (() => {
+                        const hour12 = targetHour % 12 || 12;
+                        const ampm = targetHour >= 12 ? 'PM' : 'AM';
+                        return `${hour12}:${targetMinute.toString().padStart(2, '0')} ${ampm}`;
+                    })();
+                notificationMessage = `Timer started to ${targetDate} ${hourDisplay}`;
             }
 
             fetch('/api/start', {
@@ -1193,7 +1312,11 @@ function updateLocalTimer() {
         
         function pauseTimer() {
             fetch('/api/pause', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ source: 'gui' })
             })
             .then(response => {
                 if (!response.ok) {
@@ -1213,7 +1336,11 @@ function updateLocalTimer() {
         
         function resetTimer() {
             fetch('/api/reset', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ source: 'gui' })
             })
             .then(response => {
                 if (!response.ok) {
@@ -1250,21 +1377,16 @@ function updateLocalTimer() {
         // Force refresh when page becomes visible again (screen turns on, tab switches back)
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {
-                // Reset local timer state to force resync with server
-                timerState.localStartTime = null;
-                timerState.localRemaining = 0;
-                
-                // Immediately fetch fresh status from server
+                // Page became visible, force immediate sync with server
+                // DON'T clear state - preserve local timer for offline resilience
                 updateStatus();
-                
-                // Update display right away
-                updateDisplay();
             }
         });
 
         // Current time display functions
         function updateCurrentTime() {
-            const now = new Date();
+            // Use server time by applying the calculated offset to client time
+            const now = new Date(Date.now() + serverTimeOffset);
             let hours = now.getHours();
             const minutes = now.getMinutes();
             const seconds = now.getSeconds();
@@ -1290,36 +1412,60 @@ function updateLocalTimer() {
             const targetAmPmInput = document.getElementById('targetAmPm');
 
             if (is24HourFormat) {
-                // 24-hour format
+                // 24-hour format: 0-23
                 targetHourInput.min = 0;
                 targetHourInput.max = 23;
                 ampmField.style.display = 'none';
 
-                // Convert current value if it was in 12-hour format
+                // Convert from 12-hour to 24-hour format if needed
                 let currentHour = parseInt(targetHourInput.value) || 0;
-                if (currentHour >= 1 && currentHour <= 12 && targetAmPmInput) {
+
+                // Check if value is in 12-hour range (1-12) and needs conversion
+                if (currentHour >= 1 && currentHour <= 12) {
+                    // Value appears to be in 12-hour format, convert it
                     const ampm = targetAmPmInput.value;
+
                     if (ampm === 'PM' && currentHour !== 12) {
                         currentHour += 12;
                     } else if (ampm === 'AM' && currentHour === 12) {
                         currentHour = 0;
                     }
+
+                    targetHourInput.value = currentHour;
+                } else {
+                    // Value is already in 24-hour format (0-23) or invalid, just clamp it
+                    if (currentHour < 0) currentHour = 0;
+                    if (currentHour > 23) currentHour = 23;
                     targetHourInput.value = currentHour;
                 }
             } else {
-                // 12-hour format
+                // 12-hour format: 1-12
                 targetHourInput.min = 1;
                 targetHourInput.max = 12;
                 ampmField.style.display = 'block';
 
-                // Convert current value if it was in 24-hour format
+                // Convert from 24-hour to 12-hour format if needed
                 let currentHour = parseInt(targetHourInput.value) || 12;
                 if (currentHour >= 0 && currentHour <= 23) {
+                    // Value is in 24-hour format, convert it
                     const ampm = currentHour >= 12 ? 'PM' : 'AM';
                     currentHour = currentHour % 12;
                     currentHour = currentHour ? currentHour : 12;
                     targetHourInput.value = currentHour;
                     targetAmPmInput.value = ampm;
+                } else {
+                    // Value is already in 12-hour format or invalid, just clamp it
+                    if (currentHour < 1) currentHour = 1;
+                    if (currentHour > 12) currentHour = 12;
+                    targetHourInput.value = currentHour;
+
+                    // Only initialize AM/PM if it's empty (first time or invalid state)
+                    if (!targetAmPmInput.value || (targetAmPmInput.value !== 'AM' && targetAmPmInput.value !== 'PM')) {
+                        const now = new Date(Date.now() + serverTimeOffset);
+                        const currentHour24 = now.getHours();
+                        targetAmPmInput.value = currentHour24 >= 12 ? 'PM' : 'AM';
+                    }
+                    // Otherwise preserve the existing AM/PM value
                 }
             }
         }
@@ -1336,9 +1482,9 @@ function updateLocalTimer() {
         clockFormatBtn.textContent = is24HourFormat ? '24-hour' : '12-hour';
         updateTargetTimeFormat();
 
-        // Update current time every second
+        // Update current time every .5 second (synchronized with status updates)
         updateCurrentTime();
-        setInterval(updateCurrentTime, 1000);
+        setInterval(updateCurrentTime, 500);
 
         // Add click handlers to preset buttons for visual feedback
         document.querySelectorAll('.preset-btn').forEach(btn => {
@@ -1503,18 +1649,36 @@ function updateLocalTimer() {
         function displayWhitelist(whitelist) {
             const container = document.getElementById('whitelistEntries');
 
+            // Clear existing content
+            container.innerHTML = '';
+
             if (whitelist.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px; font-size: 0.9rem;">No entries in whitelist</div>';
+                const emptyDiv = document.createElement('div');
+                emptyDiv.style.cssText = 'text-align: center; color: #64748b; padding: 20px; font-size: 0.9rem;';
+                emptyDiv.textContent = 'No entries in whitelist';
+                container.appendChild(emptyDiv);
                 updateQuickActionButtons();
                 return;
             }
 
-            container.innerHTML = whitelist.map(ip => `
-                <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;">
-                    <span style="font-family: 'Inter', monospace; font-weight: 600; color: var(--dark-color); font-size: 0.95rem;">${ip}</span>
-                    <button onclick="removeIPFromWhitelist('${ip}')" class="btn btn-reset" style="padding: 6px 12px; font-size: 0.75rem;">Remove</button>
-                </div>
-            `).join('');
+            whitelist.forEach(ip => {
+                const entryDiv = document.createElement('div');
+                entryDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 2px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;';
+
+                const ipSpan = document.createElement('span');
+                ipSpan.style.cssText = "font-family: 'Inter', monospace; font-weight: 600; color: var(--dark-color); font-size: 0.95rem;";
+                ipSpan.textContent = ip; // Safe: uses textContent instead of innerHTML
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn btn-reset';
+                removeBtn.style.cssText = 'padding: 6px 12px; font-size: 0.75rem;';
+                removeBtn.textContent = 'Remove';
+                removeBtn.addEventListener('click', () => removeIPFromWhitelist(ip));
+
+                entryDiv.appendChild(ipSpan);
+                entryDiv.appendChild(removeBtn);
+                container.appendChild(entryDiv);
+            });
 
             updateQuickActionButtons();
         }
