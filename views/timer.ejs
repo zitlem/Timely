@@ -576,7 +576,9 @@
             // Adjust server remaining time for network latency if timer is running
             let adjustedRemaining = serverData.remaining;
             if (serverData.running && networkLatency > 0) {
-                adjustedRemaining = Math.max(0, serverData.remaining - (networkLatency / 1000));
+                const latencyAdjustment = serverData.remaining - (networkLatency / 1000);
+                // Only clamp to 0 if NOT counting up (allow negative values for count-up mode)
+                adjustedRemaining = timerState.countingUp ? latencyAdjustment : Math.max(0, latencyAdjustment);
             }
 
             // Smooth sync: only update if there's a significant difference or state change

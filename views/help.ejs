@@ -917,6 +917,10 @@
                             <input type="checkbox" id="clockShowAmPm" checked>
                             <label for="clockShowAmPm">Show AM/PM in 12-hour clock</label>
                         </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="embedMode">
+                            <label for="embedMode">Enable embedding (for iframes, Home Assistant, etc.)</label>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1342,6 +1346,11 @@ pm2 startup</div>
             if (noShadow === 'true') {
                 url += `&no-shadow=${noShadow}`;
             }
+
+            const embedMode = document.getElementById('embedMode').checked;
+            if (embedMode) {
+                url += `&embed=true`;
+            }
             document.getElementById('generatedUrl').textContent = url;
 
             // Update live preview iframe
@@ -1524,6 +1533,7 @@ pm2 startup</div>
         document.getElementById('position').addEventListener('change', updateUrl);
         document.getElementById('clockShowAmPm').addEventListener('change', updateUrl);
         document.getElementById('flashCountUp').addEventListener('change', updateUrl);
+        document.getElementById('embedMode').addEventListener('change', updateUrl);
 
         // Initialize URL on page load
         updateUrl();
