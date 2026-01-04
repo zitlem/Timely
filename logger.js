@@ -111,10 +111,16 @@ module.exports = {
         log(message);
     },
 
-    logAccess: function(ip, endpoint, authenticated = true) {
+    logAccess: function(ip, endpoint, authenticated = true, source = 'api') {
         const timestamp = formatTimestamp();
         const authStatus = authenticated ? 'authenticated' : 'unauthenticated';
-        const message = `${ip} accessed ${endpoint} (${authStatus}) on ${timestamp}`;
+        const message = `${ip} accessed ${endpoint} (${authStatus}) via ${source} on ${timestamp}`;
+        log(message);
+    },
+
+    logAccessOutcome: function(ip, endpoint, outcome, source = 'api') {
+        const timestamp = formatTimestamp();
+        const message = `${ip} accessed ${endpoint} (${outcome}) via ${source} on ${timestamp}`;
         log(message);
     },
 

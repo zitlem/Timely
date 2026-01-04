@@ -13,7 +13,6 @@ A professional, feature-rich countdown timer with real-time synchronization, cus
 - **Count-Up Mode**: Timer continues counting up after reaching zero (configurable)
 - **Real-time Synchronization**: Multiple clients stay synchronized automatically
 - **Offline Resilience**: Continues running even if connection is lost
-- **State Persistence**: Timer state is preserved across server restarts
 
 ### 🎨 Customizable Display
 - **Color Schemes**: Customize background, font, warning colors, and count-up color
@@ -26,14 +25,7 @@ A professional, feature-rich countdown timer with real-time synchronization, cus
 - **Control Panel**: Intuitive interface with preset timers
 - **Target Time Mode**: Count down to specific events/deadlines
 - **IP Whitelisting**: Secure access control for timer operations
-- **Password Authentication**: Secure login when outside whitelisted IPs
 - **API Access**: Full REST API for automation and integration
-- **Activity Logging**: Track all timer operations with log viewer
-
-### 🕐 Clock Display
-- **Optional Clock**: Show current time alongside or instead of timer
-- **12/24 Hour Format**: Choose your preferred time format
-- **Configurable Display**: Show/hide seconds and AM/PM indicator
 
 ### 🔧 Display Options
 - Auto-hide hours when zero
@@ -62,15 +54,11 @@ A professional, feature-rich countdown timer with real-time synchronization, cus
    npm start
    # or for development with auto-restart:
    npm run dev
-
-   # Use custom port (default: 80)
-   PORT=3000 npm start
    ```
 
 4. **Access the Application**
    - Timer Display: `http://localhost/`
    - Control Panel: `http://localhost/control`
-   - Activity Log: `http://localhost/log`
    - Help & Documentation: `http://localhost/help`
 
 ## 📖 Usage
@@ -94,7 +82,6 @@ Customize the timer using URL parameters:
 |-----------|-------------|---------|---------|
 | `stop-at-zero` | Stop at zero (no count up) | false | true |
 | `flash-indefinitely` | Flash indefinitely at zero | true | false |
-| `flash-count-up` | Flash when counting up | true | false |
 
 #### Display Parameters
 | Parameter | Description | Default | Example |
@@ -105,16 +92,6 @@ Customize the timer using URL parameters:
 | `font-size` | Font size percentage | 100 | 150 |
 | `no-shadow` | Disable text shadow | false | true |
 | `position` | Timer position | center | top-left |
-| `embed` | Enable iframe embedding mode | false | true |
-
-#### Clock Parameters
-| Parameter | Description | Default | Example |
-|-----------|-------------|---------|---------|
-| `show-clock` | Show clock alongside timer | false | true |
-| `show-only-clock` | Show only clock (no timer) | false | true |
-| `clock-24-hour` | Use 24-hour format | true | false |
-| `clock-show-seconds` | Show seconds in clock | true | false |
-| `clock-show-ampm` | Show AM/PM indicator | true | false |
 
 **Valid Positions**: `center`, `top-left`, `top-right`, `bottom-left`, `bottom-right`
 
@@ -141,24 +118,11 @@ Customize the timer using URL parameters:
 
 # Modern blue theme
 /?background=%232d3748&font-color=%2363b3ed&hide-hour-auto=on
-
-# Clock only (no timer)
-/?show-only-clock=true&clock-24-hour=false
-
-# Timer with clock
-/?show-clock=true&clock-show-seconds=false
-
-# Embed in Home Assistant or iframe
-/?embed=true&transparent-bg=true
 ```
 
 ### Control Panel (`/control`)
 
 Access at `http://localhost/control`
-
-**Authentication:**
-- If your IP is whitelisted, you'll have direct access
-- Otherwise, you'll see a login page requiring the control password
 
 **Features:**
 - **Duration Mode**: Set timer by hours, minutes, seconds with preset buttons
@@ -168,17 +132,6 @@ Access at `http://localhost/control`
 - Always shows count-up after zero
 
 **Note**: Control panel always counts up after zero. Individual timer displays can use `?stop-at-zero=true` to stop at zero.
-
-### Activity Log (`/log`)
-
-Access at `http://localhost/log` (requires authentication)
-
-View all timer activity including:
-- Timer start/pause/reset operations
-- Authentication attempts
-- Access to control endpoints
-
-Logs are automatically rotated at 1MB with up to 2 backup files.
 
 ## 🔌 API Reference
 
@@ -246,70 +199,7 @@ Response:
 }
 ```
 
-### Authenticate (Password Login)
-```bash
-POST /api/auth
-Content-Type: application/json
-
-{
-    "password": "your_password"
-}
-
-Response:
-{
-    "success": true
-}
-```
-
-### Logout
-```bash
-POST /api/logout
-
-Response:
-{
-    "success": true
-}
-```
-
-### Add IP to Whitelist
-```bash
-POST /api/whitelist/add
-Content-Type: application/json
-
-{
-    "ip": "192.168.1.50"
-}
-```
-
-### Remove IP from Whitelist
-```bash
-POST /api/whitelist/remove
-Content-Type: application/json
-
-{
-    "ip": "192.168.1.50"
-}
-```
-
 ## 🔒 Security & Access Control
-
-### Password Authentication
-
-Configure the control panel password in `config.json`:
-```json
-{
-    "controlPassword": "your_secure_password",
-    "trustProxy": false
-}
-```
-
-- `controlPassword`: Password required for non-whitelisted IPs (default: `admin`)
-- `trustProxy`: Set to `true` if behind a reverse proxy to trust `X-Forwarded-For` headers
-
-**Security Features:**
-- Rate limiting: 5 failed attempts per 15 minutes per IP
-- Session-based authentication (24-hour expiry)
-- Secure session cookies (httpOnly)
 
 ### IP Whitelisting
 
@@ -367,36 +257,22 @@ Access the URL builder at `/help` for interactive theme creation, or use these p
 ```
 timely/
 ├── server.js                # Main Express server
-├── logger.js                # Logging module with rotation
 ├── package.json             # Dependencies and scripts
-├── config.json              # Password and proxy configuration
 ├── control_whitelist.json   # IP whitelist (optional)
-├── timer_state.json         # Persisted timer state (auto-generated)
 ├── views/                   # EJS templates
 │   ├── timer.ejs           # Timer display view
 │   ├── control.ejs         # Control panel view
-│   ├── control-login.ejs   # Login page for control panel
-│   ├── log.ejs             # Activity log viewer
 │   └── help.ejs            # Documentation & URL builder
-├── static/                  # Static assets
-│   ├── css_timer.css       # Timer display styles
-│   ├── css_control.css     # Control panel styles
-│   ├── favicon.svg         # Application favicon
-│   └── *.woff2             # Inter font family
-└── logs/                    # Activity logs (auto-generated)
-    └── timer.log           # Current log file
+└── static/                  # Static assets
+    ├── fonts/              # Web fonts (Inter family)
+    └── favicon.svg         # Application favicon
 ```
 
 ## 🛠️ Production Deployment
 
 For production use:
 
-1. **Configure Security**
-   - Change the default password in `config.json`
-   - Update the session secret in `server.js` (line 19)
-   - Set up IP whitelisting in `control_whitelist.json`
-
-2. **Use a Process Manager**
+1. **Use a Process Manager**
    ```bash
    npm install pm2 -g
    pm2 start server.js --name "timely-timer"
@@ -404,7 +280,7 @@ For production use:
    pm2 startup
    ```
 
-3. **Reverse Proxy (Nginx)**
+2. **Reverse Proxy (Nginx)**
    ```nginx
    server {
        listen 80;
@@ -416,18 +292,14 @@ For production use:
            proxy_set_header Upgrade $http_upgrade;
            proxy_set_header Connection 'upgrade';
            proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
            proxy_cache_bypass $http_upgrade;
        }
    }
    ```
 
-   **Note**: When using a reverse proxy, set `"trustProxy": true` in `config.json` to correctly identify client IPs.
-
-4. **Enable HTTPS** with Let's Encrypt
-5. **Configure Firewall** rules
-6. **Set up Monitoring** and logging
+3. **Enable HTTPS** with Let's Encrypt
+4. **Configure Firewall** rules
+5. **Set up Monitoring** and logging
 
 ## 🤝 Contributing
 
@@ -436,6 +308,12 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 ## 📄 License
 
 This project is provided as-is for educational and commercial use.
+
+## 🙏 Acknowledgments
+
+- Built with Express.js and EJS
+- Uses Inter font family for modern UI
+- Inspired by professional countdown timer applications
 
 ---
 

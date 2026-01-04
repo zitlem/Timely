@@ -423,9 +423,22 @@ accessLoggingMiddleware = (req, res, next) => {
     const endpoint = req.path;
     const authenticated = isAuthenticated(req);
 
-    // Log access for all endpoints except static files and status polling
-    if (!endpoint.startsWith('/static') && endpoint !== '/api/status') {
-        logger.logAccess(clientIP, endpoint, authenticated);
+    // Determine source: gui (from body), browser (GET requests), or api (POST without source)
+    let source;
+    if (req.body?.source) {
+        source = req.body.source;
+    } else if (req.method === 'GET') {
+        source = 'browser';
+    } else {
+        source = 'api';
+    }
+
+    // Store source on request for use in route handlers
+    req.logSource = source;
+
+    // Only log authenticated requests here; unauthenticated access logged in route handlers with outcome
+    if (authenticated && !endpoint.startsWith('/static') && endpoint !== '/api/status') {
+        logger.logAccess(clientIP, endpoint, true, source);
     }
 
     next();
@@ -498,6 +511,7 @@ app.get('/control', (req, res) => {
 
     // If not authenticated by IP or session, show login page
     if (!ipWhitelisted && !sessionAuthenticated) {
+        logger.logAccessOutcome(clientIP, '/control', 'shown login', req.logSource || 'browser');
         return res.render('control-login', {
             clientIP: clientIP
         });
@@ -526,7 +540,7 @@ app.post('/api/start', (req, res) => {
     const clientIP = getClientIP(req);
 
     if (!isAuthenticated(req)) {
-        console.log(`Access denied for IP: ${clientIP}`);
+        logger.logAccessOutcome(clientIP, '/api/start', 'denied', req.logSource || 'api');
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -566,7 +580,7 @@ app.post('/api/pause', (req, res) => {
     const clientIP = getClientIP(req);
 
     if (!isAuthenticated(req)) {
-        console.log(`Access denied for IP: ${clientIP}`);
+        logger.logAccessOutcome(clientIP, '/api/pause', 'denied', req.logSource || 'api');
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -581,7 +595,7 @@ app.post('/api/reset', (req, res) => {
     const clientIP = getClientIP(req);
 
     if (!isAuthenticated(req)) {
-        console.log(`Access denied for IP: ${clientIP}`);
+        logger.logAccessOutcome(clientIP, '/api/reset', 'denied', req.logSource || 'api');
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -645,6 +659,7 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/whitelist', (req, res) => {
     if (!isAuthenticated(req)) {
+        logger.logAccessOutcome(getClientIP(req), '/api/whitelist', 'denied', req.logSource || 'browser');
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -658,6 +673,7 @@ app.get('/api/whitelist', (req, res) => {
 // Add IP to whitelist
 app.post('/api/whitelist/add', (req, res) => {
     if (!isAuthenticated(req)) {
+        logger.logAccessOutcome(getClientIP(req), '/api/whitelist/add', 'denied', req.logSource || 'api');
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -703,6 +719,7 @@ app.post('/api/whitelist/add', (req, res) => {
 // Remove IP from whitelist
 app.post('/api/whitelist/remove', (req, res) => {
     if (!isAuthenticated(req)) {
+        logger.logAccessOutcome(getClientIP(req), '/api/whitelist/remove', 'denied', req.logSource || 'api');
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -783,6 +800,7 @@ function detectEventType(message) {
 // Log viewer endpoint (requires authentication)
 app.get('/log', (req, res) => {
     if (!isAuthenticated(req)) {
+        logger.logAccessOutcome(getClientIP(req), '/log', 'denied', req.logSource || 'browser');
         return res.status(403).send('Access denied. Please authenticate first.');
     }
 
@@ -842,6 +860,13 @@ app.get('/log', (req, res) => {
         console.error('Error reading log file:', error);
         res.status(500).send('Error reading log file');
     }
+});
+
+// 404 handler - log and redirect to control page
+app.use((req, res) => {
+    const clientIP = getClientIP(req);
+    logger.log(`${clientIP} requested non-existent path ${req.path} (404) on ${logger.formatTimestamp()}`);
+    res.redirect('/control');
 });
 
 // Start server
