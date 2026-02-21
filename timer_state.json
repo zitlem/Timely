@@ -1,0 +1,15 @@
+{
+    "totalSeconds": 0,
+    "remainingSeconds": 0,
+    "running": false,
+    "paused": false,
+    "startTime": null,
+    "pauseTime": null,
+    "finished": false,
+    "countingUp": false,
+    "targetTime": null,
+    "isTargetMode": false,
+    "message": "Test",
+    "messageExpires": 1770592376153,
+    "savedAt": 1771704107087
+}

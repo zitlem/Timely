@@ -116,6 +116,30 @@
             -webkit-animation-fill-mode: forwards;
         }
 
+        .message-display {
+            display: none;
+            font-size: min(<%= (20 * font_size / 100) %>vw, <%= (15 * font_size / 100) %>vh);
+            font-weight: bold;
+            color: <%= font_color %>;
+            <% if (show_shadow) { %>
+                text-shadow: 0 0 <%= (20 * font_size / 100) %>px currentColor;
+            <% } else { %>text-shadow: none;<% } %>
+            letter-spacing: 0.1em;
+            text-align: center;
+            padding: 0 2vw;
+            max-width: 96vw;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .message-display.active {
+            display: block;
+        }
+
+        .timer-display.hidden {
+            display: none;
+        }
+
         @-webkit-keyframes flash {
             0% {
                 opacity: 1;
@@ -277,12 +301,56 @@
 <body>
     <div class="timer-container position-<%= position %>">
         <div class="timer-display" id="timerDisplay">00:00:00</div>
+        <div class="message-display" id="messageDisplay"></div>
         <div class="connection-status" id="connectionStatus">Offline</div>
     </div>
 
     <script>
         const timerDisplay = document.getElementById('timerDisplay');
+        const messageDisplay = document.getElementById('messageDisplay');
         const connectionStatus = document.getElementById('connectionStatus');
+        const baseFontSize = <%= (20 * font_size / 100) %>; // Base font size in vw units
+
+        // Scale message text to fit the viewport width
+        function scaleMessageToFit() {
+            if (!messageDisplay.classList.contains('active')) return;
+
+            // Reset to base size and nowrap first
+            messageDisplay.style.fontSize = '';
+            messageDisplay.style.whiteSpace = 'nowrap';
+
+            // Get the computed base font size
+            const computedStyle = window.getComputedStyle(messageDisplay);
+            const baseSize = parseFloat(computedStyle.fontSize);
+            let currentSize = baseSize;
+            const maxWidth = window.innerWidth * 0.96; // 96vw
+            const minSize = baseSize * 0.5; // Don't go below 50% of base size
+
+            // Reduce font size until text fits or we hit minimum
+            while (messageDisplay.scrollWidth > maxWidth && currentSize > minSize) {
+                currentSize *= 0.95;
+                messageDisplay.style.fontSize = currentSize + 'px';
+            }
+
+            // If still too wide at minimum size, allow wrapping
+            if (messageDisplay.scrollWidth > maxWidth) {
+                messageDisplay.style.whiteSpace = 'normal';
+                messageDisplay.style.wordBreak = 'break-word';
+            }
+        }
+
+        // Observe message display changes
+        let lastMessage = '';
+        const messageObserver = new MutationObserver(() => {
+            if (messageDisplay.textContent !== lastMessage) {
+                lastMessage = messageDisplay.textContent;
+                scaleMessageToFit();
+            }
+        });
+        messageObserver.observe(messageDisplay, { childList: true, characterData: true, subtree: true });
+
+        // Re-scale on window resize
+        window.addEventListener('resize', scaleMessageToFit);
         const showSeconds = <%- JSON.stringify(show_seconds) %>;
         const hideHourAuto = <%- JSON.stringify(hide_hour_auto) %>;
         const hideSecondsOverHour = <%- JSON.stringify(hide_seconds_over_hour) %>;
@@ -294,6 +362,7 @@
         const clock24Hour = <%- JSON.stringify(clock_24_hour) %>;
         const clockShowSeconds = <%- JSON.stringify(clock_show_seconds) %>;
         const clockShowAmPm = <%- JSON.stringify(clock_show_ampm) %>;
+        const showMessages = <%- JSON.stringify(show_messages) %>;
 
         // Timer state for offline operation
         let timerState = {
@@ -307,7 +376,9 @@
             pendingControlAction: null, // Track pending control actions for responsiveness
             countingUp: !stopAtZero,
             isTargetMode: false,
-            targetTime: null
+            targetTime: null,
+            message: null,
+            messageExpires: 0
         };
         
         let isOnline = true;
@@ -462,6 +533,28 @@
         function updateDisplay() {
             updateLocalTimer();
 
+            // Check if there's an active message to display
+            const now = Date.now() + serverTimeOffset;
+            const hasActiveMessage = showMessages && timerState.message && timerState.messageExpires > now;
+
+            if (hasActiveMessage) {
+                // Show message, hide timer
+                const messageChanged = messageDisplay.textContent !== timerState.message;
+                messageDisplay.textContent = timerState.message;
+                messageDisplay.classList.add('active');
+                timerDisplay.classList.add('hidden');
+                // Scale to fit after content change
+                if (messageChanged) {
+                    scaleMessageToFit();
+                }
+                return; // Skip timer display logic
+            } else {
+                // Hide message, show timer
+                messageDisplay.classList.remove('active');
+                timerDisplay.classList.remove('hidden');
+                timerState.message = null; // Clear expired message
+            }
+
             let displayTimeFormatted;
             let displayTime = 0;
             let isShowingClock = false;
@@ -597,6 +690,15 @@
             timerState.targetTime = serverData.targetTime !== undefined ? serverData.targetTime : timerState.targetTime;
             timerState.lastServerSync = clientTime;
             timerState.pendingControlAction = null; // Clear pending action
+
+            // Update message state
+            if (showMessages && serverData.message && serverData.messageExpires > Date.now() + serverTimeOffset) {
+                timerState.message = serverData.message;
+                timerState.messageExpires = serverData.messageExpires;
+            } else if (!serverData.message || serverData.messageExpires <= Date.now() + serverTimeOffset) {
+                timerState.message = null;
+                timerState.messageExpires = 0;
+            }
 
             // Sync logic
             if (!oldRunning && serverData.running) {

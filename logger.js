@@ -136,6 +136,12 @@ module.exports = {
         log(message);
     },
 
+    logMessage: function(ip, message, duration, source = 'api') {
+        const timestamp = formatTimestamp();
+        const logEntry = `${ip} sent message "${message}" for ${duration}s via ${source} on ${timestamp}`;
+        log(logEntry);
+    },
+
     getLogFile: function() {
         return LOG_FILE;
     }

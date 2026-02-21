@@ -172,6 +172,8 @@ class CountdownTimer {
         this.countingUp = false;
         this.targetTime = null; // For countdown to specific time
         this.isTargetMode = false;
+        this.message = ''; // Temporary message to display
+        this.messageExpires = 0; // Timestamp when message expires
     }
     
     start(hours = 0, minutes = 0, seconds = 0, targetTime = null, countingUp = true, targetDate = null, targetHour = null, targetMinute = null) {
@@ -303,7 +305,9 @@ class CountdownTimer {
                 countingUp: this.countingUp,
                 isTargetMode: this.isTargetMode,
                 targetTime: this.targetTime,
-                serverTime: currentTime // Include server timestamp for better sync
+                serverTime: currentTime, // Include server timestamp for better sync
+                message: this.message,
+                messageExpires: this.messageExpires
             };
         } else {
             return {
@@ -315,7 +319,9 @@ class CountdownTimer {
                 countingUp: this.countingUp,
                 isTargetMode: this.isTargetMode,
                 targetTime: this.targetTime,
-                serverTime: currentTime
+                serverTime: currentTime,
+                message: this.message,
+                messageExpires: this.messageExpires
             };
         }
     }
@@ -339,6 +345,8 @@ function saveTimerState() {
         countingUp: timer.countingUp,
         targetTime: timer.targetTime,
         isTargetMode: timer.isTargetMode,
+        message: timer.message,
+        messageExpires: timer.messageExpires,
         savedAt: Date.now()
     };
 
@@ -364,6 +372,8 @@ function loadTimerState() {
             timer.countingUp = state.countingUp || false;
             timer.targetTime = state.targetTime || null;
             timer.isTargetMode = state.isTargetMode || false;
+            timer.message = state.message || '';
+            timer.messageExpires = state.messageExpires || 0;
             console.log('Timer state loaded:', state.running ? 'Running' : 'Stopped');
         } catch (error) {
             console.error('Error loading timer state:', error);
@@ -373,6 +383,74 @@ function loadTimerState() {
 
 // Load persisted state
 loadTimerState();
+
+// Message history persistence
+const MESSAGE_HISTORY_FILE = 'message_history.json';
+const MAX_MESSAGE_HISTORY = 20;
+let messageHistory = [];
+
+function loadMessageHistory() {
+    try {
+        if (fs.existsSync(MESSAGE_HISTORY_FILE)) {
+            const data = fs.readFileSync(MESSAGE_HISTORY_FILE, 'utf8');
+            messageHistory = JSON.parse(data);
+            if (!Array.isArray(messageHistory)) {
+                messageHistory = [];
+            }
+            console.log(`Loaded ${messageHistory.length} messages from history`);
+        }
+    } catch (error) {
+        console.error('Error loading message history:', error);
+        messageHistory = [];
+    }
+}
+
+function saveMessageHistory() {
+    try {
+        fs.writeFileSync(MESSAGE_HISTORY_FILE, JSON.stringify(messageHistory, null, 2));
+    } catch (error) {
+        console.error('Error saving message history:', error);
+    }
+}
+
+function addToMessageHistory(message) {
+    if (!message || typeof message !== 'string' || message.trim() === '') return;
+
+    const trimmedMessage = message.trim();
+
+    // Remove duplicate if exists
+    messageHistory = messageHistory.filter(m => m !== trimmedMessage);
+
+    // Add to beginning (most recent first)
+    messageHistory.unshift(trimmedMessage);
+
+    // Limit to MAX_MESSAGE_HISTORY entries
+    if (messageHistory.length > MAX_MESSAGE_HISTORY) {
+        messageHistory = messageHistory.slice(0, MAX_MESSAGE_HISTORY);
+    }
+
+    saveMessageHistory();
+}
+
+// Load message history on startup
+loadMessageHistory();
+
+// Watch for external changes to message history file
+let messageHistoryWatcher = null;
+try {
+    messageHistoryWatcher = fs.watch(MESSAGE_HISTORY_FILE, (eventType) => {
+        if (eventType === 'change') {
+            // Debounce: wait a bit before reloading to avoid multiple reloads
+            setTimeout(() => {
+                console.log('Message history file changed externally, reloading...');
+                loadMessageHistory();
+            }, 100);
+        }
+    });
+    console.log('Watching message_history.json for changes');
+} catch (error) {
+    console.log('Could not watch message_history.json:', error.message);
+}
 
 // Utility functions
 function getClientIP(req) {
@@ -469,6 +547,7 @@ app.get('/', (req, res) => {
     const clock24Hour = req.query['clock-24-hour'] !== 'false'; // Default to true (24-hour)
     const clockShowSeconds = req.query['clock-show-seconds'] !== 'false'; // Default to true
     const clockShowAmPm = req.query['clock-show-ampm'] !== 'false'; // Default to true
+    const showMessages = req.query['show-messages'] !== 'false'; // Default to true
     let position = (req.query.position || 'center').toLowerCase();
 
     // Validate position parameter
@@ -500,6 +579,7 @@ app.get('/', (req, res) => {
         clock_24_hour: clock24Hour,
         clock_show_seconds: clockShowSeconds,
         clock_show_ampm: clockShowAmPm,
+        show_messages: showMessages,
         position
     });
 });
@@ -604,6 +684,50 @@ app.post('/api/reset', (req, res) => {
     timer.reset();
     saveTimerState();
     res.json({ success: true });
+});
+
+app.post('/api/message', (req, res) => {
+    const clientIP = getClientIP(req);
+
+    if (!isAuthenticated(req)) {
+        logger.logAccessOutcome(clientIP, '/api/message', 'denied', req.logSource || 'api');
+        return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { message, duration = 10, source = 'api' } = req.body;
+    const parsedDuration = safeParseInt(duration, 10, 1, 300); // 1s to 5min
+    timer.message = message?.substring(0, 200) || '';
+    timer.messageExpires = Date.now() + parsedDuration * 1000;
+    saveTimerState();
+    addToMessageHistory(timer.message);
+    logger.logMessage(clientIP, timer.message, parsedDuration, source);
+    console.log(`Message set by ${clientIP}: "${timer.message}" for ${parsedDuration}s (source: ${source})`);
+    res.json({ success: true });
+});
+
+app.post('/api/message/clear', (req, res) => {
+    const clientIP = getClientIP(req);
+
+    if (!isAuthenticated(req)) {
+        logger.logAccessOutcome(clientIP, '/api/message/clear', 'denied', req.logSource || 'api');
+        return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { source = 'api' } = req.body;
+    timer.message = '';
+    timer.messageExpires = 0;
+    saveTimerState();
+    console.log(`Message cleared by ${clientIP} (source: ${source})`);
+    res.json({ success: true });
+});
+
+app.get('/api/message/history', (req, res) => {
+    if (!isAuthenticated(req)) {
+        logger.logAccessOutcome(getClientIP(req), '/api/message/history', 'denied', req.logSource || 'api');
+        return res.status(403).json({ error: 'Access denied' });
+    }
+
+    res.json({ history: messageHistory });
 });
 
 app.get('/api/status', (req, res) => {
@@ -853,6 +977,9 @@ app.get('/log', (req, res) => {
                 }
             });
         }
+
+        // Reverse to show newest entries first
+        logs.reverse();
 
         // Render HTML template
         res.render('log', { logs });

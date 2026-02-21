@@ -921,6 +921,10 @@
                             <input type="checkbox" id="embedMode">
                             <label for="embedMode">Enable embedding (for iframes, Home Assistant, etc.)</label>
                         </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="showMessages" checked>
+                            <label for="showMessages">Show messages on display</label>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1351,6 +1355,10 @@ pm2 startup</div>
             if (embedMode) {
                 url += `&embed=true`;
             }
+
+            if (!document.getElementById('showMessages').checked) {
+                url += `&show-messages=false`;
+            }
             document.getElementById('generatedUrl').textContent = url;
 
             // Update live preview iframe
@@ -1396,13 +1404,13 @@ pm2 startup</div>
         
         function applyPreset(preset) {
             const presets = {
-                classic: { bg: '#000000', font: '#00ff00', warning1: '#ff8800', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' },
-                matrix: { bg: '#001100', font: '#00ff41', warning1: '#ff8800', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' },
-                modern: { bg: '#2d3748', font: '#63b3ed', warning1: '#ffa500', warning2: '#f56565', countUp: '#f56565', seconds: true, hideHour: true, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' },
-                minimal: { bg: '#ffffff', font: '#2d3748', warning1: '#f6ad55', warning2: '#e53e3e', countUp: '#e53e3e', seconds: false, hideHour: true, hideSecondsOverHour: false, noShadow: true, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 80, position: 'center' },
-                red: { bg: '#000000', font: '#ff4444', warning1: '#ff6600', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 130, position: 'center' },
-                purple: { bg: '#1a1625', font: '#9f7aea', warning1: '#d69e2e', warning2: '#ed64a6', countUp: '#ed64a6', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' },
-                overlay: { bg: '#000000', font: '#ffffff', warning1: '#ffaa00', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: true, transparentBg: true, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, fontSize: 100, position: 'center' }
+                classic: { bg: '#000000', font: '#00ff00', warning1: '#ff8800', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, showMessages: true, fontSize: 100, position: 'center' },
+                matrix: { bg: '#001100', font: '#00ff41', warning1: '#ff8800', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, showMessages: true, fontSize: 100, position: 'center' },
+                modern: { bg: '#2d3748', font: '#63b3ed', warning1: '#ffa500', warning2: '#f56565', countUp: '#f56565', seconds: true, hideHour: true, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, showMessages: true, fontSize: 100, position: 'center' },
+                minimal: { bg: '#ffffff', font: '#2d3748', warning1: '#f6ad55', warning2: '#e53e3e', countUp: '#e53e3e', seconds: false, hideHour: true, hideSecondsOverHour: false, noShadow: true, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, showMessages: true, fontSize: 80, position: 'center' },
+                red: { bg: '#000000', font: '#ff4444', warning1: '#ff6600', warning2: '#ff0000', countUp: '#ff0000', seconds: true, hideHour: false, hideSecondsOverHour: false, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, showMessages: true, fontSize: 130, position: 'center' },
+                purple: { bg: '#1a1625', font: '#9f7aea', warning1: '#d69e2e', warning2: '#ed64a6', countUp: '#ed64a6', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: false, transparentBg: false, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, showMessages: true, fontSize: 100, position: 'center' },
+                overlay: { bg: '#000000', font: '#ffffff', warning1: '#ffaa00', warning2: '#ff4444', countUp: '#ff4444', seconds: true, hideHour: false, hideSecondsOverHour: true, noShadow: true, transparentBg: true, stopAtZero: false, flashIndefinitely: true, flashCountUp: true, showClock: false, showOnlyClock: false, clock24Hour: true, clockShowSeconds: true, clockShowAmPm: true, showMessages: true, fontSize: 100, position: 'center' }
             };
 
             const p = presets[preset];
@@ -1428,6 +1436,7 @@ pm2 startup</div>
             document.getElementById('clock24Hour').checked = p.clock24Hour;
             document.getElementById('clockShowSeconds').checked = p.clockShowSeconds;
             document.getElementById('clockShowAmPm').checked = p.clockShowAmPm;
+            document.getElementById('showMessages').checked = p.showMessages;
             document.getElementById('transparentBg').checked = p.transparentBg;
             document.getElementById('fontSize').value = p.fontSize;
             document.getElementById('fontSizeValue').textContent = p.fontSize + '%';
@@ -1534,6 +1543,7 @@ pm2 startup</div>
         document.getElementById('clockShowAmPm').addEventListener('change', updateUrl);
         document.getElementById('flashCountUp').addEventListener('change', updateUrl);
         document.getElementById('embedMode').addEventListener('change', updateUrl);
+        document.getElementById('showMessages').addEventListener('change', updateUrl);
 
         // Initialize URL on page load
         updateUrl();

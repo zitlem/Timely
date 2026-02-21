@@ -486,6 +486,17 @@
         .btn:active {
             transform: translateY(0);
         }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
         
         .btn-start {
             background: linear-gradient(135deg, var(--success-color), #059669);
@@ -767,6 +778,7 @@
         <div class="mode-selector" style="margin-bottom: 20px; text-align: center;">
             <button class="mode-btn active" id="durationModeBtn" onclick="setMode('duration')">Duration</button>
             <button class="mode-btn" id="targetModeBtn" onclick="setMode('target')">Target Time</button>
+            <button class="mode-btn" id="messageModeBtn" onclick="setMode('message')">Message</button>
         </div>
 
         <div class="input-section" id="durationSection">
@@ -813,11 +825,38 @@
         </div>
         
         <div class="button-group">
-            <button class="btn btn-start" onclick="startTimer()">Start</button>
-            <button class="btn btn-pause" onclick="pauseTimer()">Pause</button>
+            <button class="btn btn-start" id="mainStartBtn" onclick="startTimer()">Start</button>
+            <button class="btn btn-pause" id="mainPauseBtn" onclick="pauseTimer()">Pause</button>
             <button class="btn btn-reset" onclick="resetTimer()">Reset</button>
         </div>
-        
+
+        <div class="input-section" id="messageSection" style="display: none;">
+            <label class="input-label">Send Message to Display</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+                <input type="text" id="messageText" list="messageHistory" placeholder="Enter message..."
+                       maxlength="200" style="flex: 1; padding: 12px; border: 2px solid #e2e8f0;
+                       border-radius: 12px; font-size: 1rem; font-family: 'Inter', sans-serif;">
+                <datalist id="messageHistory"></datalist>
+                <input type="number" id="messageDuration" value="10" min="1" max="300"
+                       style="padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px;
+                       font-size: 1rem; width: 70px; font-family: 'Inter', sans-serif; text-align: center;">
+                <span style="color: #64748b; font-size: 0.9rem;">sec</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-start" onclick="sendMessage()" style="flex: 1;">
+                    Send Message
+                </button>
+                <button class="btn btn-reset" onclick="clearMessage()" style="flex: 1;">
+                    Clear Message
+                </button>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-start" id="msgStartBtn" onclick="startTimer()" style="flex: 1;">Start</button>
+                <button class="btn btn-pause" id="msgPauseBtn" onclick="pauseTimer()" style="flex: 1;">Pause</button>
+                <button class="btn btn-reset" onclick="resetTimer()" style="flex: 1;">Reset</button>
+            </div>
+        </div>
+
         <div class="timer-link">
             <a href="/" target="_blank">
                 <svg fill="currentColor" viewBox="0 0 16 16">
@@ -1020,7 +1059,20 @@ function updateLocalTimer() {
             // Use Math.floor to match timer.ejs
             statusTime.textContent = formatTime(Math.floor(displayTime));
         }
-        
+
+        function updateButtonStates() {
+            const startBtns = [document.getElementById('mainStartBtn'), document.getElementById('msgStartBtn')];
+            const pauseBtns = [document.getElementById('mainPauseBtn'), document.getElementById('msgPauseBtn')];
+
+            startBtns.forEach(btn => {
+                if (btn) btn.disabled = timerState.running;
+            });
+
+            pauseBtns.forEach(btn => {
+                if (btn) btn.disabled = timerState.paused || !timerState.running;
+            });
+        }
+
         function showNotification(message, type = 'success') {
             notification.textContent = message;
             notification.className = `notification ${type}`;
@@ -1035,19 +1087,31 @@ function updateLocalTimer() {
             currentMode = mode;
             const durationSection = document.getElementById('durationSection');
             const targetSection = document.getElementById('targetSection');
+            const messageSection = document.getElementById('messageSection');
             const durationModeBtn = document.getElementById('durationModeBtn');
             const targetModeBtn = document.getElementById('targetModeBtn');
+            const messageModeBtn = document.getElementById('messageModeBtn');
+            const presetsSection = document.querySelector('.presets-section');
+            const buttonGroup = document.querySelector('.button-group');
+
+            // Hide all sections and remove active from all buttons
+            durationSection.style.display = 'none';
+            targetSection.style.display = 'none';
+            messageSection.style.display = 'none';
+            durationModeBtn.classList.remove('active');
+            targetModeBtn.classList.remove('active');
+            messageModeBtn.classList.remove('active');
 
             if (mode === 'duration') {
                 durationSection.style.display = 'block';
-                targetSection.style.display = 'none';
                 durationModeBtn.classList.add('active');
-                targetModeBtn.classList.remove('active');
-            } else {
-                durationSection.style.display = 'none';
+                presetsSection.style.display = 'block';
+                buttonGroup.style.display = 'grid';
+            } else if (mode === 'target') {
                 targetSection.style.display = 'block';
-                durationModeBtn.classList.remove('active');
                 targetModeBtn.classList.add('active');
+                presetsSection.style.display = 'block';
+                buttonGroup.style.display = 'grid';
 
                 // Set default target time to 15 minutes from now if empty
                 const targetDateInput = document.getElementById('targetDate');
@@ -1055,7 +1119,7 @@ function updateLocalTimer() {
                 const targetMinuteInput = document.getElementById('targetMinute');
                 const targetAmPmInput = document.getElementById('targetAmPm');
 
-// Update hour input range and AM/PM visibility based on format FIRST
+                // Update hour input range and AM/PM visibility based on format FIRST
                 updateTargetTimeFormat();
 
                 if (!targetDateInput.value) {
@@ -1088,6 +1152,11 @@ function updateLocalTimer() {
                         targetAmPmInput.value = ampm;
                     }
                 }
+            } else if (mode === 'message') {
+                messageSection.style.display = 'block';
+                messageModeBtn.classList.add('active');
+                presetsSection.style.display = 'none';
+                buttonGroup.style.display = 'none';
             }
         }
 
@@ -1201,6 +1270,7 @@ function updateLocalTimer() {
 
                     // Update display immediately after syncing
                     updateDisplay();
+                    updateButtonStates();
                 })
                 .catch(error => {
                     consecutiveErrors++;
@@ -1357,7 +1427,52 @@ function updateLocalTimer() {
                 showNotification('Error resetting timer', 'error');
             });
         }
-        
+
+        function sendMessage() {
+            const message = document.getElementById('messageText').value.trim();
+            const duration = parseInt(document.getElementById('messageDuration').value);
+
+            if (!message) {
+                showNotification('Please enter a message', 'error');
+                return;
+            }
+
+            fetch('/api/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, duration, source: 'gui' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Message sent for ${duration}s`, 'success');
+                    document.getElementById('messageText').value = '';
+                    // Refresh message history dropdown
+                    loadMessageHistory();
+                } else {
+                    showNotification(data.error || 'Error sending message', 'error');
+                }
+            })
+            .catch(() => showNotification('Error sending message', 'error'));
+        }
+
+        function clearMessage() {
+            fetch('/api/message/clear', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source: 'gui' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Message cleared', 'success');
+                } else {
+                    showNotification(data.error || 'Error clearing message', 'error');
+                }
+            })
+            .catch(() => showNotification('Error clearing message', 'error'));
+        }
+
         // Update status from server every .5 second
         setInterval(updateStatus, 500);
 
@@ -1753,7 +1868,39 @@ function updateLocalTimer() {
                     }
                 });
             }
+
+            // Load message history for dropdown
+            loadMessageHistory();
         });
+
+        // Message history functions
+        function loadMessageHistory() {
+            fetch('/api/message/history')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.history && Array.isArray(data.history)) {
+                        populateMessageHistory(data.history);
+                    }
+                })
+                .catch(error => {
+                    console.log('Could not load message history:', error);
+                });
+        }
+
+        function populateMessageHistory(history) {
+            const datalist = document.getElementById('messageHistory');
+            if (!datalist) return;
+
+            // Clear existing options
+            datalist.innerHTML = '';
+
+            // Add new options
+            history.forEach(msg => {
+                const option = document.createElement('option');
+                option.value = msg;
+                datalist.appendChild(option);
+            });
+        }
 
         // Logout function
         function logout() {
